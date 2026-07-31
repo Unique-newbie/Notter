@@ -41,10 +41,11 @@ export function SprintModePad({
 }: SprintModePadProps) {
   const [content, setContent] = useState(initialContent);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [timerDisplayMode, setTimerDisplayMode] = useState<'countdown' | 'elapsed'>(goalType === 'time' ? 'countdown' : 'elapsed');
   const [fullscreenExited, setFullscreenExited] = useState(false);
   const [milestoneToast, setMilestoneToast] = useState('');
 
-  // Trackers
+  // Performance Trackers
   const [wordsBefore] = useState(() => calculateWordCount(initialContent));
   const [peakWpm, setPeakWpm] = useState(0);
   const [pauseCount, setPauseCount] = useState(0);
@@ -53,6 +54,8 @@ export function SprintModePad({
   const [longestBurstSeconds, setLongestBurstSeconds] = useState(0);
 
   const startTimeRef = useRef<number>(Date.now());
+  const pausedTimeRef = useRef<number | null>(null);
+  const totalPausedDurationRef = useRef<number>(0);
   const contentRef = useRef<string>(content);
   const lastKeyTimeRef = useRef<number>(Date.now());
   const wordsWindowRef = useRef<{ timestamp: number; wordCount: number }[]>([]);
@@ -71,6 +74,8 @@ export function SprintModePad({
     setElapsedSeconds(0);
     setFullscreenExited(false);
     startTimeRef.current = Date.now();
+    pausedTimeRef.current = null;
+    totalPausedDurationRef.current = 0;
     lastKeyTimeRef.current = Date.now();
 
     if (document.documentElement.requestFullscreen) {
@@ -80,7 +85,12 @@ export function SprintModePad({
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {
         setFullscreenExited(true);
+        pausedTimeRef.current = Date.now();
       } else {
+        if (pausedTimeRef.current) {
+          totalPausedDurationRef.current += (Date.now() - pausedTimeRef.current);
+          pausedTimeRef.current = null;
+        }
         setFullscreenExited(false);
       }
     };
@@ -94,13 +104,28 @@ export function SprintModePad({
     };
   }, [isOpen, initialContent]);
 
-  // Accurate Timer & Metrics Engine (Fixed: No interval re-creation loop!)
+  // Handle Tab Focus/Visibility Changes
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleVisibility = () => {
+      if (!document.hidden && !fullscreenExited) {
+        const now = Date.now();
+        const activeMs = now - startTimeRef.current - totalPausedDurationRef.current;
+        setElapsedSeconds(Math.floor(Math.max(0, activeMs) / 1000));
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [isOpen, fullscreenExited]);
+
+  // Accurate Timer & Metrics Engine
   useEffect(() => {
     if (!isOpen || fullscreenExited) return;
 
     const timer = setInterval(() => {
       const now = Date.now();
-      const currentElapsed = Math.floor((now - startTimeRef.current) / 1000);
+      const activeMs = now - startTimeRef.current - totalPausedDurationRef.current;
+      const currentElapsed = Math.floor(Math.max(0, activeMs) / 1000);
       setElapsedSeconds(currentElapsed);
 
       const idleMs = now - lastKeyTimeRef.current;
@@ -159,6 +184,10 @@ export function SprintModePad({
   };
 
   const resumeFullscreen = () => {
+    if (pausedTimeRef.current) {
+      totalPausedDurationRef.current += (Date.now() - pausedTimeRef.current);
+      pausedTimeRef.current = null;
+    }
     if (document.documentElement.requestFullscreen) {
       document.documentElement.requestFullscreen().catch(() => {});
     }
@@ -221,25 +250,25 @@ export function SprintModePad({
     ? Math.min(100, Math.round((elapsedSeconds / (goalTarget * 60)) * 100))
     : Math.min(100, Math.round((wordsAdded / goalTarget) * 100));
 
-  // Clean Time Formatting Engine
+  // Time & Countdown Display Formatter
   const formatTimerDisplay = () => {
-    if (goalType === 'time') {
+    if (timerDisplayMode === 'countdown' && goalType === 'time') {
       const targetSecs = goalTarget * 60;
       const remainingSecs = targetSecs - elapsedSeconds;
       if (remainingSecs >= 0) {
         const m = Math.floor(remainingSecs / 60);
         const s = remainingSecs % 60;
-        return `${m}:${s < 10 ? '0' : ''}${s}`;
+        return `${m}:${s < 10 ? '0' : ''}${s} remaining`;
       } else {
         const overSecs = Math.abs(remainingSecs);
         const m = Math.floor(overSecs / 60);
         const s = overSecs % 60;
-        return `+${m}:${s < 10 ? '0' : ''}${s}`;
+        return `+${m}:${s < 10 ? '0' : ''}${s} extra`;
       }
     } else {
       const m = Math.floor(elapsedSeconds / 60);
       const s = elapsedSeconds % 60;
-      return `${m}:${s < 10 ? '0' : ''}${s}`;
+      return `${m}:${s < 10 ? '0' : ''}${s} elapsed`;
     }
   };
 
@@ -260,7 +289,7 @@ export function SprintModePad({
             <AlertTriangle className="w-12 h-12 text-amber-400 mx-auto" />
             <h3 className="text-lg font-bold text-white">Fullscreen Mode Exited</h3>
             <p className="text-xs text-[#8e8ea0] leading-relaxed">
-              Your writing progress is auto-saved locally. Resume sprint mode to stay in the zone!
+              Your writing progress is auto-saved locally. Timer is paused while in break menu.
             </p>
             <div className="flex justify-center gap-3 pt-2">
               <button
@@ -299,9 +328,14 @@ export function SprintModePad({
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-white bg-[#181820] px-3 py-1 rounded-lg border border-[#232334]">
+          {/* Clickable Timer Mode Switcher */}
+          <button
+            onClick={() => setTimerDisplayMode(prev => prev === 'countdown' ? 'elapsed' : 'countdown')}
+            className="flex items-center gap-1.5 font-mono text-xs font-bold text-white bg-[#181820] hover:bg-[#232334] px-3 py-1 rounded-lg border border-[#232334] transition-all cursor-pointer"
+            title="Click to toggle between Countdown & Elapsed Time"
+          >
             <Clock className="w-3.5 h-3.5 text-amber-400" /> {formatTimerDisplay()}
-          </div>
+          </button>
 
           <div className="flex items-center gap-1.5 font-mono text-xs text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/30">
             <span>+{wordsAdded} words</span>
