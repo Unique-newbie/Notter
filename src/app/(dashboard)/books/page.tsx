@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BookOpen, Plus, Trash2, Edit3, ArrowRight, X, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Edit3, ArrowRight, X, CheckCircle2, Image as ImageIcon, Upload } from 'lucide-react';
 import { repository } from '@/lib/store/repository';
 import { Book, BookStatus } from '@/types';
 
@@ -16,9 +16,11 @@ export default function BooksPage() {
   const [description, setDescription] = useState('');
   const [genre, setGenre] = useState('Epic Fantasy');
   const [coverColor, setCoverColor] = useState('#7C3AED');
+  const [coverUrl, setCoverUrl] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<BookStatus>('Drafting');
   const [validationError, setValidationError] = useState('');
   const [successToast, setSuccessToast] = useState('');
+  const [isCompressingCover, setIsCompressingCover] = useState(false);
 
   const refreshBooks = async () => {
     const list = await repository.getBooks();
@@ -31,6 +33,58 @@ export default function BooksPage() {
     window.addEventListener('storybible_data_changed', handleDataChanged);
     return () => window.removeEventListener('storybible_data_changed', handleDataChanged);
   }, []);
+
+  // Handle Cover Upload & Canvas 600x800 Compression
+  const handleCoverUpload = (file: File) => {
+    if (!file || !file.type.startsWith('image/')) {
+      setValidationError('Please select a valid image file (PNG, JPG, WebP).');
+      return;
+    }
+
+    setIsCompressingCover(true);
+    setValidationError('');
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 600;
+        canvas.height = 800;
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+          setIsCompressingCover(false);
+          setValidationError('Canvas processing failed.');
+          return;
+        }
+
+        // Draw image covering 600x800 container aspect ratio
+        const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
+        const x = (canvas.width - img.width * scale) / 2;
+        const y = (canvas.height - img.height * scale) / 2;
+
+        ctx.fillStyle = coverColor || '#121218';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+
+        // Compress to WebP at 0.85 quality (< 500KB guaranteed)
+        let compressedDataUrl = canvas.toDataURL('image/webp', 0.85);
+        if (!compressedDataUrl.startsWith('data:image/webp')) {
+          compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        }
+
+        setCoverUrl(compressedDataUrl);
+        setIsCompressingCover(false);
+      };
+      img.onerror = () => {
+        setIsCompressingCover(false);
+        setValidationError('Failed to load image.');
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSaveBook = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +101,7 @@ export default function BooksPage() {
         description: description.trim(),
         genre,
         coverColor,
+        coverUrl,
         status
       });
       setSuccessToast(`Updated "${title.trim()}"!`);
@@ -56,6 +111,7 @@ export default function BooksPage() {
         description: description.trim(),
         genre,
         coverColor,
+        coverUrl,
         status
       });
       if (newBook) {
@@ -81,6 +137,7 @@ export default function BooksPage() {
     setDescription(book.description);
     setGenre(book.genre);
     setCoverColor(book.coverColor);
+    setCoverUrl(book.coverUrl);
     setStatus(book.status);
     setValidationError('');
     setIsCreateModalOpen(true);
@@ -91,6 +148,7 @@ export default function BooksPage() {
     setDescription('');
     setGenre('Epic Fantasy');
     setCoverColor('#7C3AED');
+    setCoverUrl(undefined);
     setStatus('Drafting');
     setValidationError('');
     setEditingBook(null);
@@ -155,16 +213,34 @@ export default function BooksPage() {
         {books.map((book) => (
           <div
             key={book.id}
-            className="p-6 rounded-2xl bg-[#121218] border border-[#232334] hover:border-[#7c3aed]/50 transition-all flex flex-col justify-between group shadow-xl relative"
+            className="p-6 rounded-2xl bg-[#121218] border border-[#232334] hover:border-[#7c3aed]/50 transition-all flex flex-col justify-between group shadow-xl relative overflow-hidden"
           >
             <div>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-4 h-4 rounded-full shadow-md" style={{ backgroundColor: book.coverColor }} />
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#8e8ea0]">{book.genre}</span>
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                  {book.coverUrl ? (
+                    <img
+                      src={book.coverUrl}
+                      alt={book.title}
+                      className="w-12 h-16 rounded-lg object-cover border border-[#232334] shadow-md shrink-0"
+                    />
+                  ) : (
+                    <div
+                      className="w-12 h-16 rounded-lg shrink-0 flex items-center justify-center text-white font-extrabold text-sm shadow-md"
+                      style={{ backgroundColor: book.coverColor }}
+                    >
+                      {book.title.substring(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#8e8ea0]">{book.genre}</span>
+                    <h2 className="text-lg font-extrabold text-white group-hover:text-[#a78bfa] transition-colors line-clamp-1 mt-0.5">
+                      {book.title}
+                    </h2>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <button
                     onClick={() => openEditModal(book)}
                     className="p-1.5 rounded-lg text-[#8e8ea0] hover:text-white hover:bg-[#1e1e2a] transition-colors"
@@ -182,9 +258,6 @@ export default function BooksPage() {
                 </div>
               </div>
 
-              <h2 className="text-xl font-extrabold text-white group-hover:text-[#a78bfa] transition-colors">
-                {book.title}
-              </h2>
               <p className="text-xs text-[#a1a1aa] mt-2 line-clamp-3 leading-relaxed">
                 {book.description || 'No description provided.'}
               </p>
@@ -245,12 +318,64 @@ export default function BooksPage() {
                   Description
                 </label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   placeholder="Brief synopsis of your novel..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full bg-[#181820] border border-[#232334] rounded-xl p-3 text-white placeholder-[#8e8ea0] focus:outline-none focus:border-[#7c3aed]"
                 />
+              </div>
+
+              {/* Book Cover Upload Field */}
+              <div className="p-3.5 rounded-xl bg-[#181820] border border-[#232334] space-y-2.5">
+                <label className="block text-[10px] font-bold text-[#a78bfa] uppercase tracking-wider">
+                  Book Cover Image (Auto-Resized 600x800 WebP &lt; 500KB)
+                </label>
+
+                <div className="flex items-center gap-4">
+                  {coverUrl ? (
+                    <div className="relative group shrink-0">
+                      <img
+                        src={coverUrl}
+                        alt="Cover Preview"
+                        className="w-16 h-20 rounded-lg object-cover border border-[#232334]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setCoverUrl(undefined)}
+                        className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 text-white text-[10px]"
+                        title="Remove Cover"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-16 h-20 rounded-lg bg-[#121218] border border-dashed border-[#232334] flex flex-col items-center justify-center text-[#8e8ea0] shrink-0">
+                      <ImageIcon className="w-5 h-5 mb-1 opacity-50" />
+                      <span className="text-[9px]">No Cover</span>
+                    </div>
+                  )}
+
+                  <div className="flex-1 space-y-1">
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#232334] hover:bg-[#2e2e42] text-white text-xs font-semibold cursor-pointer transition-all">
+                      <Upload className="w-3.5 h-3.5 text-[#a78bfa]" />
+                      {isCompressingCover ? 'Compressing...' : coverUrl ? 'Change Cover' : 'Upload Cover'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={isCompressingCover}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleCoverUpload(file);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    <p className="text-[10px] text-[#8e8ea0]">
+                      Auto-converts and scales to 600x800 WebP format under 500KB.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -286,7 +411,7 @@ export default function BooksPage() {
 
               <div>
                 <label className="block text-xs font-bold text-[#8e8ea0] uppercase tracking-wider mb-1.5">
-                  Cover Color Accent
+                  Fallback Accent Color
                 </label>
                 <div className="flex items-center gap-3">
                   {['#7C3AED', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#EC4899'].map((color) => (
@@ -313,7 +438,8 @@ export default function BooksPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#7c3aed] text-white font-bold hover:bg-[#6d28d9] shadow-purple"
+                  disabled={isCompressingCover}
+                  className="px-5 py-2 rounded-xl bg-[#7c3aed] text-white font-bold hover:bg-[#6d28d9] shadow-purple disabled:opacity-50"
                 >
                   {editingBook ? 'Update Book' : 'Create Book'}
                 </button>

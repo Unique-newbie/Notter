@@ -120,14 +120,19 @@ export default function ChaptersPage() {
     return () => clearTimeout(timer);
   }, [content, title, chapterNumber]);
 
-  // Open review modal for existing pending extraction
+  // Open review modal for existing pending or approved extraction draft
   const handleOpenPendingReview = async (chapId?: string) => {
     const targetId = chapId || activeChapter?.id;
     if (!targetId) return;
-    await repository.updateChapter(targetId, { status: 'Analyzed' });
-    setSaveToast('Chapter status updated to Analyzed.');
-    setTimeout(() => setSaveToast(''), 3000);
-    refreshChapters(targetId);
+
+    const draft = await repository.getExtractionForChapter(targetId);
+    if (draft) {
+      setCurrentDraft(draft);
+      setReviewModalOpen(true);
+    } else {
+      setErrorToast('No extraction receipt found for this chapter.');
+      setTimeout(() => setErrorToast(''), 3500);
+    }
   };
 
   const handleRunAIAnalysis = async (targetChapter?: Chapter) => {

@@ -67,12 +67,20 @@ export default function BookOverviewPage() {
       {/* Book Header Banner */}
       <div className="p-8 rounded-2xl bg-[#121218] border border-[#232334] flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl relative overflow-hidden">
         <div className="flex items-start gap-4">
-          <div
-            className="w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center text-white font-extrabold text-xl shadow-purple"
-            style={{ backgroundColor: book.coverColor }}
-          >
-            {book.title.substring(0, 2).toUpperCase()}
-          </div>
+          {book.coverUrl ? (
+            <img
+              src={book.coverUrl}
+              alt={book.title}
+              className="w-16 h-20 rounded-xl object-cover border border-[#232334] shadow-purple shrink-0"
+            />
+          ) : (
+            <div
+              className="w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center text-white font-extrabold text-xl shadow-purple"
+              style={{ backgroundColor: book.coverColor }}
+            >
+              {book.title.substring(0, 2).toUpperCase()}
+            </div>
+          )}
           <div>
             <div className="flex items-center gap-2.5 mb-1">
               <span className="text-xs font-bold uppercase tracking-wider text-[#8e8ea0]">{book.genre}</span>

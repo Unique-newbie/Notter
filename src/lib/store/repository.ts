@@ -9,10 +9,14 @@ import { isHighlySimilar } from '@/lib/ai/validator';
 
 class StoryRepository {
   private supabase = createClient();
+  private notificationTimer: NodeJS.Timeout | null = null;
 
   private notifyDataChanged() {
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('storybible_data_changed'));
+      if (this.notificationTimer) clearTimeout(this.notificationTimer);
+      this.notificationTimer = setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('storybible_data_changed'));
+      }, 150);
     }
   }
 
@@ -30,6 +34,7 @@ class StoryRepository {
       title: b.title,
       description: b.description || '',
       coverColor: b.cover_color || '#7C3AED',
+      coverUrl: b.cover_url || undefined,
       genre: b.genre || 'Fantasy',
       status: b.status || 'Drafting',
       createdAt: b.created_at,
@@ -50,6 +55,7 @@ class StoryRepository {
       title: data.title,
       description: data.description || '',
       coverColor: data.cover_color || '#7C3AED',
+      coverUrl: data.cover_url || undefined,
       genre: data.genre || 'Fantasy',
       status: data.status || 'Drafting',
       createdAt: data.created_at,
@@ -68,6 +74,7 @@ class StoryRepository {
         title: book.title,
         description: book.description || '',
         cover_color: book.coverColor || '#7C3AED',
+        cover_url: book.coverUrl || null,
         genre: book.genre || 'Fantasy',
         status: book.status || 'Drafting'
       })
@@ -81,6 +88,7 @@ class StoryRepository {
       title: data.title,
       description: data.description,
       coverColor: data.cover_color,
+      coverUrl: data.cover_url || undefined,
       genre: data.genre,
       status: data.status,
       createdAt: data.created_at,
@@ -94,6 +102,7 @@ class StoryRepository {
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.genre !== undefined) updateData.genre = updates.genre;
     if (updates.coverColor !== undefined) updateData.cover_color = updates.coverColor;
+    if (updates.coverUrl !== undefined) updateData.cover_url = updates.coverUrl;
     if (updates.status !== undefined) updateData.status = updates.status;
 
     updateData.updated_at = new Date().toISOString();
@@ -740,7 +749,7 @@ class StoryRepository {
       if (data.events && Array.isArray(data.events)) {
         for (let i = 0; i < data.events.length; i++) {
           const ev = data.events[i];
-          if (!ev.title || !isApproved(`event-${ev.title}-${i}`)) continue;
+          if (!ev.title || (!isApproved(`ev-${ev.title}-${i}`) && !isApproved(`event-${ev.title}-${i}`))) continue;
 
           await this.supabase.from('timeline_events').insert({
             user_id: userId, book_id: bookId, chapter_id: chapterId, chapter_number: chapterNum,
@@ -756,7 +765,7 @@ class StoryRepository {
       if (data.plot_threads && Array.isArray(data.plot_threads)) {
         for (let i = 0; i < data.plot_threads.length; i++) {
           const pt = data.plot_threads[i];
-          if (!pt.title || !isApproved(`pt-${pt.title}-${i}`)) continue;
+          if (!pt.title || (!isApproved(`plot-${pt.title}-${i}`) && !isApproved(`pt-${pt.title}-${i}`))) continue;
 
           await this.supabase.from('plot_threads').insert({
             user_id: userId, book_id: bookId, chapter_id: chapterId, title: pt.title, description: pt.description || '', status: 'Open'
@@ -768,7 +777,7 @@ class StoryRepository {
       if (data.foreshadowing && Array.isArray(data.foreshadowing)) {
         for (let i = 0; i < data.foreshadowing.length; i++) {
           const fs = data.foreshadowing[i];
-          if (!fs.clueDescription || !isApproved(`fs-${fs.clueDescription}-${i}`)) continue;
+          if (!fs.clueDescription || (!isApproved(`fore-${fs.clueDescription}-${i}`) && !isApproved(`fs-${fs.clueDescription}-${i}`))) continue;
 
           await this.supabase.from('foreshadowing').insert({
             user_id: userId, book_id: bookId, chapter_id: chapterId, clue_description: fs.clueDescription, payoff_target: fs.payoffTarget || '', status: 'Unfulfilled'

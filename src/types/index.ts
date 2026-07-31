@@ -13,6 +13,7 @@ export interface Book {
   title: string;
   description: string;
   coverColor: string;
+  coverUrl?: string;
   genre: string;
   status: BookStatus;
   createdAt: string;
