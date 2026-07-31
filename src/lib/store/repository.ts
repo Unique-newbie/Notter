@@ -263,11 +263,39 @@ class StoryRepository {
       emotionalState: c.emotional_state, physicalInjuries: c.physical_injuries, physicalChanges: c.physical_changes,
       clothing: c.clothing, goals: c.goals, secretsRevealed: c.secrets_revealed || [],
       promisesMade: c.promises_made || [], promisesBroken: c.promises_broken || [],
-      decisions: c.decisions || [], knowledgeGained: c.knowledge_gained || [],
+      decisions: c.decisions || [], knowledgeGained: c.knowledge_gained || [], knowledgeLost: c.knowledge_lost || [],
       firstAppearanceChapterId: c.first_appearance_chapter_id, lastAppearanceChapterId: c.last_appearance_chapter_id,
       appearedInChapterIds: c.appeared_in_chapter_ids || [], chapterAppearances: c.chapter_appearances || [],
-      history: c.history || [], tags: c.tags || [], authorNotes: c.author_notes || [], createdAt: c.created_at
+      history: c.history || [], tags: c.tags || [], authorNotes: c.author_notes || [],
+      species: c.species, race: c.race, gender: c.gender, age: c.age, birthday: c.birthday, title: c.title,
+      hairColor: c.hair_color, eyeColor: c.eye_color, skinTone: c.skin_tone, height: c.height, weight: c.weight,
+      build: c.build, scars: c.scars, tattoos: c.tattoos, distinguishingFeatures: c.distinguishing_features,
+      level: c.level, rank: c.rank, tier: c.tier, className: c.class_name, cultivationRealm: c.cultivation_realm,
+      hp: c.hp, maxHp: c.max_hp, mana: c.mana, maxMana: c.max_mana, strength: c.strength, agility: c.agility, vitality: c.vitality,
+      createdAt: c.created_at, updatedAt: c.updated_at || c.created_at
     }));
+  }
+
+  async getCharacter(id: string): Promise<Character | undefined> {
+    const { data, error } = await this.supabase.from('characters').select('*').eq('id', id).single();
+    if (error || !data) return undefined;
+    return {
+      id: data.id, bookId: data.book_id, name: data.name, aliases: data.aliases || [], summary: data.summary || '',
+      status: data.status || 'Active', occupation: data.occupation, currentLocation: data.current_location,
+      emotionalState: data.emotional_state, physicalInjuries: data.physical_injuries, physicalChanges: data.physical_changes,
+      clothing: data.clothing, goals: data.goals, secretsRevealed: data.secrets_revealed || [],
+      promisesMade: data.promises_made || [], promisesBroken: data.promises_broken || [],
+      decisions: data.decisions || [], knowledgeGained: data.knowledge_gained || [], knowledgeLost: data.knowledge_lost || [],
+      firstAppearanceChapterId: data.first_appearance_chapter_id, lastAppearanceChapterId: data.last_appearance_chapter_id,
+      appearedInChapterIds: data.appeared_in_chapter_ids || [], chapterAppearances: data.chapter_appearances || [],
+      history: data.history || [], tags: data.tags || [], authorNotes: data.author_notes || [],
+      species: data.species, race: data.race, gender: data.gender, age: data.age, birthday: data.birthday, title: data.title,
+      hairColor: data.hair_color, eyeColor: data.eye_color, skinTone: data.skin_tone, height: data.height, weight: data.weight,
+      build: data.build, scars: data.scars, tattoos: data.tattoos, distinguishingFeatures: data.distinguishing_features,
+      level: data.level, rank: data.rank, tier: data.tier, className: data.class_name, cultivationRealm: data.cultivation_realm,
+      hp: data.hp, maxHp: data.max_hp, mana: data.mana, maxMana: data.max_mana, strength: data.strength, agility: data.agility, vitality: data.vitality,
+      createdAt: data.created_at, updatedAt: data.updated_at || data.created_at
+    };
   }
 
   async getAbilities(bookId: string): Promise<Ability[]> {
@@ -391,7 +419,7 @@ class StoryRepository {
       id: data.id, bookId: data.book_id, name: data.name, aliases: data.aliases || [], summary: data.summary || '',
       status: data.status || 'Active', occupation: data.occupation, currentLocation: data.current_location,
       emotionalState: data.emotional_state, physicalInjuries: data.physical_injuries, clothing: data.clothing,
-      goals: data.goals, appearedInChapterIds: [], createdAt: data.created_at
+      goals: data.goals, appearedInChapterIds: [], createdAt: data.created_at, updatedAt: data.updated_at || data.created_at
     };
   }
 
@@ -867,8 +895,117 @@ class StoryRepository {
     return suggestions;
   }
 
+  async intelligentMergeCharacters(primaryId: string, secondaryId: string, overrides?: Partial<Character>): Promise<boolean> {
+    const primary = await this.getCharacter(primaryId);
+    const secondary = await this.getCharacter(secondaryId);
+    if (!primary || !secondary) return false;
+
+    // 1. Combine Arrays & Sets
+    const combinedAliases = Array.from(new Set([
+      ...primary.aliases,
+      ...secondary.aliases,
+      secondary.name
+    ])).filter(a => a !== primary.name);
+
+    const combinedNotes = Array.from(new Set([
+      ...(primary.authorNotes || []),
+      ...(secondary.authorNotes || []),
+      ...(secondary.summary ? [`Historical note from ${secondary.name}: ${secondary.summary}`] : [])
+    ]));
+
+    const combinedTags = Array.from(new Set([
+      ...(primary.tags || []),
+      ...(secondary.tags || [])
+    ]));
+
+    const combinedAppearedIds = Array.from(new Set([
+      ...(primary.appearedInChapterIds || []),
+      ...(secondary.appearedInChapterIds || [])
+    ]));
+
+    const combinedAppearances = [
+      ...(primary.chapterAppearances || []),
+      ...(secondary.chapterAppearances || [])
+    ].filter((v, i, a) => a.findIndex(t => t.chapterNumber === v.chapterNumber) === i);
+
+    const combinedHistory = [
+      ...(primary.history || []),
+      ...(secondary.history || [])
+    ].sort((a, b) => a.chapterNumber - b.chapterNumber);
+
+    // 2. Intelligent Fill for Primary from Secondary
+    const mergedData: Partial<Character> = {
+      aliases: combinedAliases,
+      summary: primary.summary.trim() ? primary.summary : secondary.summary,
+      occupation: primary.occupation || secondary.occupation,
+      currentLocation: primary.currentLocation || secondary.currentLocation,
+      emotionalState: primary.emotionalState || secondary.emotionalState,
+      physicalInjuries: primary.physicalInjuries || secondary.physicalInjuries,
+      clothing: primary.clothing || secondary.clothing,
+      goals: primary.goals || secondary.goals,
+      species: primary.species || secondary.species,
+      race: primary.race || secondary.race,
+      gender: primary.gender || secondary.gender,
+      age: primary.age || secondary.age,
+      birthday: primary.birthday || secondary.birthday,
+      title: primary.title || secondary.title,
+      hairColor: primary.hairColor || secondary.hairColor,
+      eyeColor: primary.eyeColor || secondary.eyeColor,
+      skinTone: primary.skinTone || secondary.skinTone,
+      height: primary.height || secondary.height,
+      weight: primary.weight || secondary.weight,
+      build: primary.build || secondary.build,
+      scars: primary.scars || secondary.scars,
+      tattoos: primary.tattoos || secondary.tattoos,
+      distinguishingFeatures: primary.distinguishingFeatures || secondary.distinguishingFeatures,
+      level: primary.level || secondary.level,
+      rank: primary.rank || secondary.rank,
+      tier: primary.tier || secondary.tier,
+      className: primary.className || secondary.className,
+      cultivationRealm: primary.cultivationRealm || secondary.cultivationRealm,
+      hp: primary.hp || secondary.hp,
+      maxHp: primary.maxHp || secondary.maxHp,
+      mana: primary.mana || secondary.mana,
+      maxMana: primary.maxMana || secondary.maxMana,
+      strength: primary.strength || secondary.strength,
+      agility: primary.agility || secondary.agility,
+      vitality: primary.vitality || secondary.vitality,
+      appearedInChapterIds: combinedAppearedIds,
+      chapterAppearances: combinedAppearances,
+      history: combinedHistory,
+      tags: combinedTags,
+      authorNotes: combinedNotes,
+      ...overrides
+    };
+
+    // 3. Update Primary Database Record
+    await this.updateCharacter(primaryId, mergedData);
+
+    // 4. Remap Foreign Keys in PostgreSQL Database
+    try {
+      // Items ownership
+      await this.supabase.from('items').update({ owner_character_name: primary.name }).eq('owner_character_name', secondary.name);
+      
+      // Relationships
+      await this.supabase.from('relationships').update({ character1_name: primary.name }).eq('character1_name', secondary.name);
+      await this.supabase.from('relationships').update({ character2_name: primary.name }).eq('character2_name', secondary.name);
+      
+      // Dialogue Facts
+      await this.supabase.from('dialogue_facts').update({ speaker: primary.name }).eq('speaker', secondary.name);
+      await this.supabase.from('dialogue_facts').update({ recipient: primary.name }).eq('recipient', secondary.name);
+    } catch (e) {
+      console.warn('[Merge FK Remap Note]:', e);
+    }
+
+    // 5. Delete Secondary Record
+    await this.deleteCharacter(secondaryId);
+
+    this.notifyDataChanged();
+    return true;
+  }
+
   async mergeCharacters(primaryId: string, secondaryId: string): Promise<boolean> {
-    return this.deleteCharacter(secondaryId);
+    return this.intelligentMergeCharacters(primaryId, secondaryId);
   }
 }
 

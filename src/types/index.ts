@@ -80,6 +80,43 @@ export interface Character {
   physicalChanges?: string;
   clothing?: string;
   goals?: string;
+  
+  // Extended RPG & Physical Codex Attributes
+  species?: string;
+  race?: string;
+  gender?: string;
+  age?: string;
+  birthday?: string;
+  title?: string;
+  affiliations?: string[];
+  
+  // Physical Appearance Details
+  hairColor?: string;
+  eyeColor?: string;
+  skinTone?: string;
+  height?: string;
+  weight?: string;
+  build?: string;
+  scars?: string;
+  tattoos?: string;
+  distinguishingFeatures?: string;
+  weaponsEquipped?: string[];
+
+  // RPG Statistics
+  level?: number;
+  rank?: string;
+  tier?: string;
+  className?: string;
+  cultivationRealm?: string;
+  hp?: number;
+  maxHp?: number;
+  mana?: number;
+  maxMana?: number;
+  strength?: number;
+  agility?: number;
+  vitality?: number;
+  customStats?: Record<string, string | number>;
+
   secretsRevealed?: string[];
   promisesMade?: string[];
   promisesBroken?: string[];
@@ -93,8 +130,8 @@ export interface Character {
   history?: EntityHistoryEvent[];
   tags?: string[];
   authorNotes?: string[];
-  notes?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface Ability {
