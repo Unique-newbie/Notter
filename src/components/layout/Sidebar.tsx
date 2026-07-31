@@ -50,9 +50,11 @@ export function Sidebar({ collapsed, onToggleCollapse, activeBookId }: SidebarPr
       <div className="flex items-center justify-between h-16 px-4 border-b border-[#232334] bg-[#09090b]">
         {!collapsed && (
           <Link href="/dashboard" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-[#7c3aed] flex items-center justify-center text-white shadow-purple group-hover:scale-105 transition-transform">
-              <Sparkles className="w-4 h-4" />
-            </div>
+            <img
+              src="/logo-icon.png"
+              alt="Notter Logo"
+              className="w-9 h-9 object-contain drop-shadow-md group-hover:scale-105 transition-transform"
+            />
             <div>
               <span className="font-extrabold tracking-tight text-white text-base">Notter</span>
               <span className="text-[10px] font-semibold tracking-wider text-[#a78bfa] block -mt-1 uppercase">Fiction Engine</span>
@@ -61,9 +63,13 @@ export function Sidebar({ collapsed, onToggleCollapse, activeBookId }: SidebarPr
         )}
 
         {collapsed && (
-          <div className="w-8 h-8 rounded-lg bg-[#7c3aed] flex items-center justify-center text-white mx-auto shadow-purple">
-            <Sparkles className="w-4 h-4" />
-          </div>
+          <Link href="/dashboard" className="mx-auto">
+            <img
+              src="/logo-icon.png"
+              alt="Notter Logo"
+              className="w-8 h-8 object-contain drop-shadow-md"
+            />
+          </Link>
         )}
 
         <button

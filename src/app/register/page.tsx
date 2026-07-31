@@ -65,9 +65,11 @@ export default function RegisterPage() {
         
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-xl bg-[#7c3aed] mx-auto flex items-center justify-center text-white shadow-purple">
-            <Sparkles className="w-6 h-6" />
-          </div>
+          <img
+            src="/logo-icon.png"
+            alt="Notter Logo"
+            className="w-16 h-16 object-contain mx-auto drop-shadow-xl"
+          />
           <h1 className="text-2xl font-extrabold text-white tracking-tight">Create Notter Account</h1>
           <p className="text-xs text-[#8e8ea0]">
             Sign up to securely back up and organize your novel universe.
