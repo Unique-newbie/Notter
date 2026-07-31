@@ -470,6 +470,56 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Advanced Settings & Cache Management */}
+      <div className="p-6 rounded-2xl bg-[#121218] border border-[#232334] space-y-4 text-xs">
+        <h2 className="text-base font-bold text-white border-b border-[#232334] pb-3">Advanced Settings &amp; Data Maintenance</h2>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <button
+            onClick={() => {
+              const data = {
+                apiKeys,
+                themePrefs: localStorage.getItem('notter_theme_prefs'),
+                exportedAt: new Date().toISOString()
+              };
+              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `notter-settings-${Date.now()}.json`;
+              a.click();
+              showSuccess('Exported settings JSON!');
+            }}
+            className="p-4 rounded-xl bg-[#181820] border border-[#232334] hover:border-[#7c3aed] font-bold text-white text-left transition-all"
+          >
+            Export Settings JSON
+            <span className="block text-[10px] text-[#8e8ea0] font-normal mt-0.5">Download local keys and theme configuration</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (confirm('Clear local storage cache? (Saved sessions will be preserved in database)')) {
+                localStorage.clear();
+                showSuccess('Local cache cleared successfully!');
+                setTimeout(() => window.location.reload(), 1000);
+              }
+            }}
+            className="p-4 rounded-xl bg-[#181820] border border-[#232334] hover:border-amber-500 font-bold text-amber-300 text-left transition-all"
+          >
+            Clear Local Cache
+            <span className="block text-[10px] text-[#8e8ea0] font-normal mt-0.5">Free up browser storage &amp; reset UI state</span>
+          </button>
+
+          <a
+            href="/about"
+            className="p-4 rounded-xl bg-[#181820] border border-[#232334] hover:border-cyan-400 font-bold text-cyan-300 text-left transition-all"
+          >
+            About &amp; Developer Diagnostics
+            <span className="block text-[10px] text-[#8e8ea0] font-normal mt-0.5">App version v2.2.0 &amp; DB connection stats</span>
+          </a>
+        </div>
+      </div>
+
     </div>
   );
 }

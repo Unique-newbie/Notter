@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, LayoutDashboard, Settings, Sparkles, ChevronLeft, ChevronRight, ShieldAlert, GitBranch, Layers, LogOut, Users, Package, MapPin, Shield, User, Flame } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Settings, Sparkles, ChevronLeft, ChevronRight, ShieldAlert, GitBranch, Layers, LogOut, Users, Package, MapPin, Shield, User, Flame, HelpCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/AuthContext';
 
@@ -26,6 +26,8 @@ export function Sidebar({ collapsed, onToggleCollapse, activeBookId }: SidebarPr
     { label: 'Writing Analytics', href: '/analytics', icon: Flame },
     { label: 'Profile & Themes', href: '/profile', icon: User },
     { label: 'Settings & Keys', href: '/settings', icon: Settings },
+    { label: 'Feedback Center', href: '/feedback', icon: HelpCircle },
+    { label: 'About & Diagnostics', href: '/about', icon: Info },
   ];
 
   const bookNavItems = [
