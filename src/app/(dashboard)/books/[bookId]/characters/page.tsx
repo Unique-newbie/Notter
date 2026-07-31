@@ -294,8 +294,18 @@ export default function CharactersPage() {
         {/* Character List */}
         <div className="space-y-3">
           {characters.length === 0 && (
-            <div className="p-8 text-center rounded-xl bg-[#121218]/60 border border-[#232334] text-[#8e8ea0] text-sm">
-              No characters extracted yet. Analyze a chapter first.
+            <div className="p-8 text-center rounded-2xl bg-[#121218] border border-[#232334] text-[#8e8ea0] space-y-3">
+              <Users className="w-10 h-10 mx-auto text-[#7c3aed] opacity-40" />
+              <h3 className="text-sm font-bold text-white">No Characters Found</h3>
+              <p className="text-xs text-[#8e8ea0]">
+                Add your first character or run AI chapter extraction to discover entities automatically.
+              </p>
+              <button
+                onClick={openCreateModal}
+                className="px-4 py-2 rounded-xl bg-[#7c3aed] text-white font-bold text-xs hover:bg-[#6d28d9] shadow-purple"
+              >
+                + Add Your First Character
+              </button>
             </div>
           )}
           {characters.map((char) => {

@@ -144,6 +144,18 @@ class StoryRepository {
   }
 
   async deleteBook(id: string): Promise<boolean> {
+    const book = await this.getBook(id);
+    if (book?.coverUrl && book.coverUrl.includes('covers/')) {
+      try {
+        const parts = book.coverUrl.split('covers/');
+        if (parts.length > 1) {
+          await this.supabase.storage.from('covers').remove([parts[1]]);
+        }
+      } catch (e) {
+        console.warn('[Storage Cleanup Note]:', e);
+      }
+    }
+
     const { error } = await this.supabase.from('books').delete().eq('id', id);
     if (error) return false;
     this.notifyDataChanged();

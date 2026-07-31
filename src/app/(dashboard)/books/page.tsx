@@ -5,11 +5,16 @@ import Link from 'next/link';
 import { BookOpen, Plus, Trash2, Edit3, ArrowRight, X, CheckCircle2, Image as ImageIcon, Upload } from 'lucide-react';
 import { repository } from '@/lib/store/repository';
 import { Book, BookStatus } from '@/types';
+import { DeleteConfirmationModal } from '@/components/common/DeleteConfirmationModal';
 
 export default function BooksPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
+
+  // Delete Modal State
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [bookToDelete, setBookToDelete] = useState<{ id: string; title: string } | null>(null);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -124,9 +129,18 @@ export default function BooksPage() {
     await refreshBooks();
   };
 
-  const handleDeleteBook = async (id: string, bookTitle: string) => {
-    if (confirm(`Are you sure you want to delete "${bookTitle}"? All associated chapters and entities will be removed.`)) {
-      await repository.deleteBook(id);
+  const handleDeleteBook = (id: string, bookTitle: string) => {
+    setBookToDelete({ id, title: bookTitle });
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteBook = async () => {
+    if (bookToDelete) {
+      await repository.deleteBook(bookToDelete.id);
+      setDeleteModalOpen(false);
+      setBookToDelete(null);
+      setSuccessToast(`Deleted "${bookToDelete.title}"`);
+      setTimeout(() => setSuccessToast(''), 3000);
       await refreshBooks();
     }
   };
@@ -448,6 +462,19 @@ export default function BooksPage() {
           </div>
         </div>
       )}
+
+      {/* Standardized Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        title="Delete Book & Project"
+        itemTitle={bookToDelete?.title}
+        description="Are you sure you want to delete this book? All associated chapters, entity appearances, and Story Bible records will be removed. Associated storage cover files will be cleaned up."
+        onConfirm={confirmDeleteBook}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setBookToDelete(null);
+        }}
+      />
     </div>
   );
 }
