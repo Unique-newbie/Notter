@@ -4,8 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { repository } from '@/lib/store/repository';
 import { Chapter, AIExtraction } from '@/types';
-import { BookOpen, Plus, Trash2, Sparkles, RefreshCw, CheckCircle2, Check, AlertTriangle, Play, FileJson, Copy, X, CheckSquare, Eye } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Sparkles, RefreshCw, CheckCircle2, Check, AlertTriangle, Play, FileJson, Copy, X, CheckSquare, Eye, Maximize2 } from 'lucide-react';
 import { AIReviewModal } from '@/components/ai/AIReviewModal';
+import { ZenWritingPad } from '@/components/editor/ZenWritingPad';
 import { calculateWordCount, calculateReadingTime } from '@/lib/utils';
 import { SYSTEM_EXTRACTION_PROMPT } from '@/lib/ai/prompt';
 import { validateAndCleanExtraction } from '@/lib/ai/validator';
@@ -29,6 +30,9 @@ export default function ChaptersPage() {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [saveToast, setSaveToast] = useState('');
   const [errorToast, setErrorToast] = useState('');
+
+  // Zen Writing Pad State
+  const [zenPadOpen, setZenPadOpen] = useState(false);
 
   // Manual JSON Import Modal State
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -410,6 +414,15 @@ ${content}
                 </span>
               </div>
 
+              {/* Full Screen Writing Pad Button */}
+              <button
+                onClick={() => setZenPadOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#7c3aed]/20 border border-[#7c3aed]/40 text-[#a78bfa] hover:bg-[#7c3aed] hover:text-white text-xs font-bold transition-all shadow-purple"
+                title="Open Distraction-Free Full-Screen Writing Pad"
+              >
+                <Maximize2 className="w-3.5 h-3.5" /> Full-Screen Pad
+              </button>
+
               {/* Copy Full Prompt Button */}
               <button
                 onClick={handleCopyFullPromptAndChapter}
@@ -573,6 +586,24 @@ ${content}
         extractionDraft={currentDraft}
         onClose={() => setReviewModalOpen(false)}
         onApproved={() => {
+          refreshChapters(activeChapter?.id);
+        }}
+      />
+
+      {/* Distraction-Free Full-Screen Writing Pad */}
+      <ZenWritingPad
+        isOpen={zenPadOpen}
+        chapterTitle={title}
+        chapterNumber={chapterNumber}
+        initialContent={content}
+        onSave={async (newContent) => {
+          setContent(newContent);
+          if (activeChapter) {
+            await repository.updateChapter(activeChapter.id, { content: newContent });
+          }
+        }}
+        onClose={() => {
+          setZenPadOpen(false);
           refreshChapters(activeChapter?.id);
         }}
       />

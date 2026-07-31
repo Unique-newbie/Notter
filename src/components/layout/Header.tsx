@@ -114,9 +114,13 @@ export function Header({ activeBookId = 'book-1', onSelectBook }: HeaderProps) {
             <span>BYOK Engine</span>
           </div>
 
-          <div className="w-8 h-8 rounded-full bg-[#1e1e2a] border border-[#232334] flex items-center justify-center text-[#a1a1aa]">
+          <a
+            href="/profile"
+            className="w-8 h-8 rounded-full bg-[#1e1e2a] border border-[#232334] flex items-center justify-center text-[#a1a1aa] hover:border-[#7c3aed] transition-colors"
+            title="Profile & Preferences"
+          >
             <User className="w-4 h-4" />
-          </div>
+          </a>
         </div>
       </header>
 

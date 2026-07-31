@@ -3,20 +3,117 @@
 @tailwind utilities;
 
 :root {
-  --background: 9 9% 4%;
-  --foreground: 240 5% 96%;
-  --card: 240 13% 8%;
-  --card-foreground: 240 5% 96%;
-  --primary: 263 84% 58%;
-  --primary-foreground: 0 0% 100%;
-  --border: 240 20% 17%;
+  --bg-main: #09090b;
+  --bg-card: #121218;
+  --bg-card-hover: #181820;
+  --border-color: #232334;
+  --text-main: #f4f4f5;
+  --text-muted: #8e8ea0;
+  --text-subtle: #a1a1aa;
+  --accent-color: #7c3aed;
+  --accent-hover: #6d28d9;
+}
+
+/* 1. AMOLED Black Theme */
+html[data-theme='amoled'] {
+  --bg-main: #000000;
+  --bg-card: #08080a;
+  --bg-card-hover: #101014;
+  --border-color: #1a1a24;
+  --text-main: #ffffff;
+  --text-muted: #71717a;
+}
+
+/* 2. Light Theme */
+html[data-theme='light'] {
+  --bg-main: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
+  --border-color: #e2e8f0;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+}
+
+/* 3. Obsidian Theme */
+html[data-theme='obsidian'] {
+  --bg-main: #16161a;
+  --bg-card: #1c1c21;
+  --bg-card-hover: #24242c;
+  --border-color: #2cb67d33;
+  --text-main: #fffffe;
+  --text-muted: #94a1b2;
+}
+
+/* 4. Dracula Theme */
+html[data-theme='dracula'] {
+  --bg-main: #282a36;
+  --bg-card: #44475a;
+  --bg-card-hover: #6272a4;
+  --border-color: #6272a4;
+  --text-main: #f8f8f2;
+  --text-muted: #8be9fd;
+  --accent-color: #bd93f9;
+}
+
+/* 5. Nord Theme */
+html[data-theme='nord'] {
+  --bg-main: #2e3440;
+  --bg-card: #3b4252;
+  --bg-card-hover: #434c5e;
+  --border-color: #4c566a;
+  --text-main: #eceff4;
+  --text-muted: #d8dee9;
+  --accent-color: #88c0d0;
+}
+
+/* 6. Catppuccin Mocha Theme */
+html[data-theme='catppuccin'] {
+  --bg-main: #1e1e2e;
+  --bg-card: #181825;
+  --bg-card-hover: #313244;
+  --border-color: #45475a;
+  --text-main: #cdd6f4;
+  --text-muted: #a6adc8;
+  --accent-color: #cba6f7;
+}
+
+/* 7. Solarized Light */
+html[data-theme='solarized-light'] {
+  --bg-main: #fdf6e3;
+  --bg-card: #eee8d5;
+  --bg-card-hover: #e0d7c3;
+  --border-color: #cb4b16;
+  --text-main: #657b83;
+  --text-muted: #839496;
+  --accent-color: #268bd2;
+}
+
+/* 8. Sepia Theme */
+html[data-theme='sepia'] {
+  --bg-main: #f4ecd8;
+  --bg-card: #e9e0cb;
+  --bg-card-hover: #ddd2b9;
+  --border-color: #d3c4a5;
+  --text-main: #433422;
+  --text-muted: #7c6853;
+  --accent-color: #8c6d46;
+}
+
+/* Reduced Motion Mode */
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
 }
 
 body {
-  background-color: #09090b;
-  color: #f4f4f5;
+  background-color: var(--bg-main);
+  color: var(--text-main);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Obsidian / Cursor style custom scrollbar */
@@ -26,30 +123,30 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #09090b;
+  background: var(--bg-main);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #232334;
+  background: var(--border-color);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #7c3aed;
+  background: var(--accent-color);
 }
 
 /* Glassmorphism primitives */
 .glass-card {
-  background: rgba(18, 18, 24, 0.75);
+  background: var(--bg-card);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
 }
 
 .glass-panel {
-  background: rgba(18, 18, 24, 0.85);
+  background: var(--bg-card);
   backdrop-filter: blur(16px);
-  border: 1px solid #232334;
+  border: 1px solid var(--border-color);
 }
 
 .purple-glow {
@@ -60,13 +157,4 @@ body {
   background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 50%, #c084fc 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-}
-
-.border-glow {
-  transition: all 0.2s ease-in-out;
-}
-
-.border-glow:hover {
-  border-color: rgba(124, 58, 237, 0.5);
-  box-shadow: 0 0 15px -3px rgba(124, 58, 237, 0.2);
 }
