@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { repository } from '@/lib/store/repository';
 import { Chapter, AIExtraction } from '@/types';
-import { BookOpen, Plus, Trash2, Sparkles, RefreshCw, CheckCircle2, Check, AlertTriangle, Play, FileJson, Copy, X, CheckSquare, Eye, Maximize2, Flame } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Sparkles, RefreshCw, CheckCircle2, Check, AlertTriangle, Play, FileJson, Copy, X, CheckSquare, Eye, Maximize2, Flame, RotateCcw } from 'lucide-react';
 import { AIReviewModal } from '@/components/ai/AIReviewModal';
 import { ZenWritingPad } from '@/components/editor/ZenWritingPad';
 import { SprintLauncherModal } from '@/components/sprint/SprintLauncherModal';
@@ -477,6 +477,10 @@ ${content}
                   <>
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Extracting...
                   </>
+                ) : activeChapter.status === 'Analyzed' ? (
+                  <>
+                    <RotateCcw className="w-3.5 h-3.5 text-amber-300" /> Re-extract Chapter
+                  </>
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5" /> Analyze Chapter with AI
@@ -513,19 +517,30 @@ ${content}
                   onClick={() => handleOpenPendingReview()}
                   className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-500 hover:bg-amber-600 text-black font-extrabold text-[11px] transition-all shadow-lg animate-pulse"
                 >
-                  <CheckSquare className="w-3.5 h-3.5" /> Review & Approve Now
+                  <CheckSquare className="w-3.5 h-3.5" /> Review &amp; Approve Now
                 </button>
               )}
 
-              {/* View Receipt Button for Analyzed Chapters */}
+              {/* View Receipt & Re-extract Buttons for Analyzed Chapters */}
               {activeChapter.status === 'Analyzed' && (
-                <button
-                  onClick={() => handleOpenPendingReview()}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#181820] hover:bg-[#1e1e2a] border border-[#232334] text-[#a78bfa] font-bold text-[11px] transition-all"
-                  title="View Extraction Receipt"
-                >
-                  <Eye className="w-3.5 h-3.5" /> View Analysis Receipt
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleOpenPendingReview()}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#181820] hover:bg-[#1e1e2a] border border-[#232334] text-[#a78bfa] font-bold text-[11px] transition-all"
+                    title="View Extraction Receipt"
+                  >
+                    <Eye className="w-3.5 h-3.5" /> View Analysis Receipt
+                  </button>
+
+                  <button
+                    onClick={() => handleRunAIAnalysis()}
+                    disabled={isAnalyzing || batchAnalyzing || !content.trim()}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-[11px] transition-all disabled:opacity-50"
+                    title="Re-extract chapter text with AI to generate a fresh receipt"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" /> Re-extract Chapter
+                  </button>
+                </div>
               )}
             </div>
           </div>
