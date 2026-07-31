@@ -44,28 +44,35 @@ export function SprintModePad({
   const [fullscreenExited, setFullscreenExited] = useState(false);
   const [milestoneToast, setMilestoneToast] = useState('');
 
-  // Performance Metric Trackers
+  // Trackers
   const [wordsBefore] = useState(() => calculateWordCount(initialContent));
   const [peakWpm, setPeakWpm] = useState(0);
   const [pauseCount, setPauseCount] = useState(0);
   const [totalPauseSeconds, setTotalPauseSeconds] = useState(0);
   const [deleteCount, setDeleteCount] = useState(0);
-  const [typingBurstSeconds, setTypingBurstSeconds] = useState(0);
   const [longestBurstSeconds, setLongestBurstSeconds] = useState(0);
 
+  const startTimeRef = useRef<number>(Date.now());
+  const contentRef = useRef<string>(content);
   const lastKeyTimeRef = useRef<number>(Date.now());
   const wordsWindowRef = useRef<{ timestamp: number; wordCount: number }[]>([]);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const currentBurstRef = useRef<number>(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Initialize and Enter Browser Fullscreen
+  useEffect(() => {
+    contentRef.current = content;
+  }, [content]);
+
+  // Initialize & Enter Fullscreen
   useEffect(() => {
     if (!isOpen) return;
     setContent(initialContent);
+    contentRef.current = initialContent;
     setElapsedSeconds(0);
     setFullscreenExited(false);
+    startTimeRef.current = Date.now();
+    lastKeyTimeRef.current = Date.now();
 
-    // Request Browser Fullscreen
     if (document.documentElement.requestFullscreen) {
       document.documentElement.requestFullscreen().catch(() => {});
     }
@@ -87,30 +94,27 @@ export function SprintModePad({
     };
   }, [isOpen, initialContent]);
 
-  // Main 1s Timer & Metrics Engine
+  // Accurate Timer & Metrics Engine (Fixed: No interval re-creation loop!)
   useEffect(() => {
     if (!isOpen || fullscreenExited) return;
 
     const timer = setInterval(() => {
-      setElapsedSeconds(s => s + 1);
-
       const now = Date.now();
-      const idleMs = now - lastKeyTimeRef.current;
+      const currentElapsed = Math.floor((now - startTimeRef.current) / 1000);
+      setElapsedSeconds(currentElapsed);
 
+      const idleMs = now - lastKeyTimeRef.current;
       if (idleMs > 4000) {
         setPauseCount(p => p + 1);
         setTotalPauseSeconds(ps => ps + 1);
-        setTypingBurstSeconds(0);
+        currentBurstRef.current = 0;
       } else {
-        setTypingBurstSeconds(b => {
-          const nextB = b + 1;
-          setLongestBurstSeconds(lb => Math.max(lb, nextB));
-          return nextB;
-        });
+        currentBurstRef.current += 1;
+        setLongestBurstSeconds(lb => Math.max(lb, currentBurstRef.current));
       }
 
-      // Calculate sliding 10s Peak WPM
-      const currentWords = calculateWordCount(content);
+      // Calculate sliding Peak WPM
+      const currentWords = calculateWordCount(contentRef.current);
       const addedWords = Math.max(0, currentWords - wordsBefore);
       wordsWindowRef.current.push({ timestamp: now, wordCount: addedWords });
       wordsWindowRef.current = wordsWindowRef.current.filter(w => now - w.timestamp <= 15000);
@@ -126,38 +130,26 @@ export function SprintModePad({
         }
       }
 
-      // Rolling 3s Snapshot Auto-Save
+      // Rolling Active Snapshot Auto-Save
       const snapshot: ActiveSprintSnapshot = {
-        sessionId: `sprint-${Date.now()}`,
+        sessionId: `sprint-${startTimeRef.current}`,
         bookId,
         chapterId,
         chapterTitle,
         chapterNumber,
         initialContent,
-        currentContent: content,
+        currentContent: contentRef.current,
         goalType,
         goalTarget,
-        startTime: new Date(Date.now() - elapsedSeconds * 1000).toISOString(),
+        startTime: new Date(startTimeRef.current).toISOString(),
         lastUpdated: new Date().toISOString()
       };
       sprintStore.saveActiveSnapshot(snapshot);
 
-      // Check Milestones
-      if (addedWords === 250) triggerMilestone('🎉 250 Words Written! Keep Going!');
-      else if (addedWords === 500) triggerMilestone('🔥 500 Words Written! Outstanding!');
-      else if (goalType === 'words' && addedWords >= Math.floor(goalTarget / 2) && addedWords < Math.floor(goalTarget / 2) + 5) {
-        triggerMilestone('⚡ Halfway to your Word Target!');
-      }
-
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isOpen, fullscreenExited, content, wordsBefore, goalType, goalTarget, elapsedSeconds, bookId, chapterId, chapterTitle, chapterNumber, initialContent]);
-
-  const triggerMilestone = (msg: string) => {
-    setMilestoneToast(msg);
-    setTimeout(() => setMilestoneToast(''), 3000);
-  };
+  }, [isOpen, fullscreenExited, bookId, chapterId, chapterTitle, chapterNumber, initialContent, goalType, goalTarget, wordsBefore]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     lastKeyTimeRef.current = Date.now();
@@ -194,7 +186,7 @@ export function SprintModePad({
       id: `sprint-${Date.now()}`,
       bookId,
       chapterId,
-      startTime: new Date(Date.now() - elapsedSeconds * 1000).toISOString(),
+      startTime: new Date(startTimeRef.current).toISOString(),
       endTime: new Date().toISOString(),
       durationSeconds: elapsedSeconds,
       wordsBefore,
@@ -215,11 +207,8 @@ export function SprintModePad({
       createdAt: new Date().toISOString()
     };
 
-    // Save final chapter content
     await onSaveChapterContent(content);
-    // Record session & streaks
     sprintStore.saveSession(session);
-    // Launch Summary Modal
     onSprintFinish(session);
     onClose();
   };
@@ -232,10 +221,26 @@ export function SprintModePad({
     ? Math.min(100, Math.round((elapsedSeconds / (goalTarget * 60)) * 100))
     : Math.min(100, Math.round((wordsAdded / goalTarget) * 100));
 
-  const formatTimer = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  // Clean Time Formatting Engine
+  const formatTimerDisplay = () => {
+    if (goalType === 'time') {
+      const targetSecs = goalTarget * 60;
+      const remainingSecs = targetSecs - elapsedSeconds;
+      if (remainingSecs >= 0) {
+        const m = Math.floor(remainingSecs / 60);
+        const s = remainingSecs % 60;
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
+      } else {
+        const overSecs = Math.abs(remainingSecs);
+        const m = Math.floor(overSecs / 60);
+        const s = overSecs % 60;
+        return `+${m}:${s < 10 ? '0' : ''}${s}`;
+      }
+    } else {
+      const m = Math.floor(elapsedSeconds / 60);
+      const s = elapsedSeconds % 60;
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
   };
 
   return (
@@ -295,7 +300,7 @@ export function SprintModePad({
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-white bg-[#181820] px-3 py-1 rounded-lg border border-[#232334]">
-            <Clock className="w-3.5 h-3.5 text-amber-400" /> {formatTimer(elapsedSeconds)}
+            <Clock className="w-3.5 h-3.5 text-amber-400" /> {formatTimerDisplay()}
           </div>
 
           <div className="flex items-center gap-1.5 font-mono text-xs text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/30">
