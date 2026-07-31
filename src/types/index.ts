@@ -401,5 +401,68 @@ export interface SprintAchievement {
   description: string;
   icon: string;
   unlockedAt?: string;
-  progress: number; // 0 to 100
+  progress: number;
+}
+
+export interface AuthorProfile {
+  id: string;
+  username: string;
+  displayName: string;
+  bio: string;
+  avatarUrl?: string;
+  country?: string;
+  favoriteGenre?: string;
+  privacy: 'public' | 'friends' | 'private';
+  followersCount: number;
+  followingCount: number;
+  isFollowing?: boolean;
+  totalWords: number;
+  streakDays: number;
+  averageWpm: number;
+  sprintCount: number;
+  booksCount: number;
+  joinedDate: string;
+}
+
+export interface Guild {
+  id: string;
+  name: string;
+  tag: string;
+  description: string;
+  genre: string;
+  icon: string;
+  memberCount: number;
+  totalWordsWritten: number;
+  weeklyGoalWords: number;
+  isJoined?: boolean;
+  leaderUsername: string;
+  createdAt: string;
+}
+
+export interface ChallengeEvent {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  category: 'official' | 'seasonal' | 'guild';
+  targetWords: number;
+  durationDays: number;
+  badgeIcon: string;
+  badgeName: string;
+  joinedCount: number;
+  isJoined?: boolean;
+  currentProgressWords: number;
+  startDate: string;
+  endDate: string;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  username: string;
+  displayName: string;
+  avatarUrl?: string;
+  metricValue: number;
+  metricLabel: string;
+  isCurrentUser?: boolean;
+  flaggedAntiCheat?: boolean;
 }

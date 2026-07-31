@@ -24,6 +24,7 @@ export function Sidebar({ collapsed, onToggleCollapse, activeBookId }: SidebarPr
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Books', href: '/books', icon: BookOpen },
     { label: 'Writing Analytics', href: '/analytics', icon: Flame },
+    { label: 'Community Hub', href: '/community', icon: Users },
     { label: 'Profile & Themes', href: '/profile', icon: User },
     { label: 'Settings & Keys', href: '/settings', icon: Settings },
     { label: 'Feedback Center', href: '/feedback', icon: HelpCircle },
