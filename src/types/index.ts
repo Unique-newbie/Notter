@@ -16,10 +16,20 @@ export interface Book {
   coverUrl?: string;
   genre: string;
   status: BookStatus;
+  isFavorite?: boolean;
   createdAt: string;
   updatedAt: string;
   chapterCount?: number;
   totalWordCount?: number;
+}
+
+export interface ActivityLogItem {
+  id: string;
+  type: 'chapter_edit' | 'character_add' | 'timeline_update' | 'cover_update' | 'book_create';
+  description: string;
+  timestamp: string;
+  bookId?: string;
+  chapterId?: string;
 }
 
 export interface Chapter {

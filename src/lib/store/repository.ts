@@ -29,6 +29,12 @@ class StoryRepository {
       .order('created_at', { ascending: false });
 
     if (error || !data) return [];
+
+    let favIds: string[] = [];
+    if (typeof window !== 'undefined') {
+      try { favIds = JSON.parse(localStorage.getItem('notter_fav_books') || '[]'); } catch (e) {}
+    }
+
     return data.map(b => ({
       id: b.id,
       title: b.title,
@@ -37,6 +43,7 @@ class StoryRepository {
       coverUrl: b.cover_url || undefined,
       genre: b.genre || 'Fantasy',
       status: b.status || 'Drafting',
+      isFavorite: favIds.includes(b.id),
       createdAt: b.created_at,
       updatedAt: b.updated_at
     }));
@@ -111,6 +118,29 @@ class StoryRepository {
     if (error) return false;
     this.notifyDataChanged();
     return true;
+  }
+
+  async toggleFavoriteBook(id: string, currentFav: boolean): Promise<boolean> {
+    if (typeof window !== 'undefined') {
+      const favs = JSON.parse(localStorage.getItem('notter_fav_books') || '[]');
+      let nextFavs = [];
+      if (currentFav) {
+        nextFavs = favs.filter((fId: string) => fId !== id);
+      } else {
+        nextFavs = [...favs, id];
+      }
+      localStorage.setItem('notter_fav_books', JSON.stringify(nextFavs));
+    }
+    this.notifyDataChanged();
+    return true;
+  }
+
+  async archiveBook(id: string): Promise<boolean> {
+    return this.updateBook(id, { status: 'Archived' });
+  }
+
+  async restoreBook(id: string): Promise<boolean> {
+    return this.updateBook(id, { status: 'Drafting' });
   }
 
   async deleteBook(id: string): Promise<boolean> {
