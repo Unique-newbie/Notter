@@ -348,3 +348,48 @@ export interface ConsistencyReport {
   issues: ConsistencyIssue[];
   totalChaptersAudited: number;
 }
+
+export interface SprintSession {
+  id: string;
+  bookId: string;
+  chapterId: string;
+  startTime: string;
+  endTime: string;
+  durationSeconds: number;
+  wordsBefore: number;
+  wordsAfter: number;
+  wordsAdded: number;
+  charactersTyped: number;
+  averageWpm: number;
+  peakWpm: number;
+  longestBurstMinutes: number;
+  pauseCount: number;
+  averagePauseSeconds: number;
+  deleteCount: number;
+  completionPercent: number;
+  goalType: 'time' | 'words';
+  goalTarget: number;
+  goalCompleted: boolean;
+  themeUsed: string;
+  createdAt: string;
+}
+
+export interface WritingStreakStats {
+  currentStreakDays: number;
+  longestStreakDays: number;
+  totalWordsWritten: number;
+  totalSprintSeconds: number;
+  totalSessionsCompleted: number;
+  dailyGoalWords: number;
+  weeklyGoalWords: number;
+  monthlyGoalWords: number;
+}
+
+export interface SprintAchievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  unlockedAt?: string;
+  progress: number; // 0 to 100
+}

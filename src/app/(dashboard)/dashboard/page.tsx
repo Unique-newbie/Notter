@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BookOpen, Sparkles, Layers, Clock, ArrowRight, FileText } from 'lucide-react';
+import { BookOpen, Sparkles, Layers, Clock, ArrowRight, FileText, Flame } from 'lucide-react';
 import { repository } from '@/lib/store/repository';
 import { Book } from '@/types';
 
@@ -69,14 +69,12 @@ export default function DashboardPage() {
             >
               <BookOpen className="w-4 h-4" /> Manage Books
             </Link>
-            {firstBookId && (
-              <Link
-                href={`/books/${firstBookId}/chapters`}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1e1e2a] border border-[#232334] text-white font-semibold text-xs hover:bg-[#272738] transition-all"
-              >
-                <FileText className="w-4 h-4 text-[#a78bfa]" /> Open Chapter Editor
-              </Link>
-            )}
+            <Link
+              href="/analytics"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-extrabold text-xs hover:from-amber-600 hover:to-orange-700 transition-all shadow-xl"
+            >
+              <Flame className="w-4 h-4" /> Sprint Mode &amp; Analytics
+            </Link>
           </div>
         </div>
       </div>
