@@ -6,6 +6,7 @@ import { BookOpen, Plus, Trash2, Edit3, ArrowRight, X, CheckCircle2, Image as Im
 import { repository } from '@/lib/store/repository';
 import { Book, BookStatus } from '@/types';
 import { DeleteConfirmationModal } from '@/components/common/DeleteConfirmationModal';
+import { MediaUploader } from '@/components/common/MediaUploader';
 
 export default function BooksPage() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -341,55 +342,43 @@ export default function BooksPage() {
               </div>
 
               {/* Book Cover Upload Field */}
-              <div className="p-3.5 rounded-xl bg-[#181820] border border-[#232334] space-y-2.5">
+              <div className="space-y-1.5">
                 <label className="block text-[10px] font-bold text-[#a78bfa] uppercase tracking-wider">
-                  Book Cover Image (Auto-Resized 600x800 WebP &lt; 500KB)
+                  Book Cover Image (Auto-Resized WebP &lt; 500KB)
                 </label>
-
-                <div className="flex items-center gap-4">
-                  {coverUrl ? (
-                    <div className="relative group shrink-0">
-                      <img
-                        src={coverUrl}
-                        alt="Cover Preview"
-                        className="w-16 h-20 rounded-lg object-cover border border-[#232334]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setCoverUrl(undefined)}
-                        className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 text-white text-[10px]"
-                        title="Remove Cover"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="w-16 h-20 rounded-lg bg-[#121218] border border-dashed border-[#232334] flex flex-col items-center justify-center text-[#8e8ea0] shrink-0">
-                      <ImageIcon className="w-5 h-5 mb-1 opacity-50" />
-                      <span className="text-[9px]">No Cover</span>
-                    </div>
-                  )}
-
-                  <div className="flex-1 space-y-1">
-                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#232334] hover:bg-[#2e2e42] text-white text-xs font-semibold cursor-pointer transition-all">
-                      <Upload className="w-3.5 h-3.5 text-[#a78bfa]" />
-                      {isCompressingCover ? 'Compressing...' : coverUrl ? 'Change Cover' : 'Upload Cover'}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        disabled={isCompressingCover}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleCoverUpload(file);
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                    <p className="text-[10px] text-[#8e8ea0]">
-                      Auto-converts and scales to 600x800 WebP format under 500KB.
-                    </p>
-                  </div>
-                </div>
+                <MediaUploader
+                  currentUrl={coverUrl}
+                  onImageSelected={async (file) => {
+                    return new Promise((resolve) => {
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                          const canvas = document.createElement('canvas');
+                          canvas.width = 600;
+                          canvas.height = 800;
+                          const ctx = canvas.getContext('2d');
+                          if (ctx) {
+                            ctx.fillStyle = coverColor || '#121218';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            const scale = Math.max(canvas.width / img.width, canvas.height / img.height);
+                            const x = (canvas.width - img.width * scale) / 2;
+                            const y = (canvas.height - img.height * scale) / 2;
+                            ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+                            let webp = canvas.toDataURL('image/webp', 0.85);
+                            setCoverUrl(webp);
+                            resolve(webp);
+                          }
+                        };
+                        img.src = e.target?.result as string;
+                      };
+                      reader.readAsDataURL(file);
+                    });
+                  }}
+                  aspectRatioWidth={600}
+                  aspectRatioHeight={800}
+                  label="Upload Book Cover"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

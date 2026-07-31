@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { repository } from '@/lib/store/repository';
 import { Chapter, AIExtraction } from '@/types';
-import { BookOpen, Plus, Trash2, Sparkles, RefreshCw, CheckCircle2, Check, AlertTriangle, Play, FileJson, Copy, X, CheckSquare, Eye, Maximize2 } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Sparkles, RefreshCw, CheckCircle2, Check, AlertTriangle, Play, FileJson, Copy, X, CheckSquare, Eye, Maximize2, Flame } from 'lucide-react';
 import { AIReviewModal } from '@/components/ai/AIReviewModal';
 import { ZenWritingPad } from '@/components/editor/ZenWritingPad';
+import { SprintLauncherModal } from '@/components/sprint/SprintLauncherModal';
+import { SprintModePad } from '@/components/sprint/SprintModePad';
+import { sprintStore } from '@/lib/store/sprintStore';
 import { calculateWordCount, calculateReadingTime } from '@/lib/utils';
 import { SYSTEM_EXTRACTION_PROMPT } from '@/lib/ai/prompt';
 import { validateAndCleanExtraction } from '@/lib/ai/validator';
@@ -31,8 +34,14 @@ export default function ChaptersPage() {
   const [saveToast, setSaveToast] = useState('');
   const [errorToast, setErrorToast] = useState('');
 
-  // Zen Writing Pad State
+  // Refs for infinite loop prevention
+  const loadedChapterIdRef = useRef<string | null>(null);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Zen & Sprint Mode State
   const [zenPadOpen, setZenPadOpen] = useState(false);
+  const [sprintLauncherOpen, setSprintLauncherOpen] = useState(false);
+  const [activeSprintConfig, setActiveSprintConfig] = useState<any | null>(null);
 
   // Manual JSON Import Modal State
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -43,36 +52,32 @@ export default function ChaptersPage() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [currentDraft, setCurrentDraft] = useState<AIExtraction | null>(null);
 
-  const selectChapter = (chap: Chapter) => {
+  const selectChapter = useCallback((chap: Chapter) => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    loadedChapterIdRef.current = chap.id;
     setActiveChapter(chap);
     setTitle(chap.title);
     setChapterNumber(chap.chapterNumber);
     setContent(chap.content);
     setSaveStatus('saved');
-  };
+  }, []);
 
   const refreshChapters = useCallback(async (targetChapterId?: string) => {
     const list = await repository.getChapters(bookId);
     setChapters(list);
 
     if (list.length > 0) {
-      const preferredId = targetChapterId || activeChapter?.id || initialChapterId;
+      const preferredId = targetChapterId || loadedChapterIdRef.current || initialChapterId;
       const selected = list.find(c => c.id === preferredId) || list[0];
       selectChapter(selected);
     }
-  }, [bookId, initialChapterId, activeChapter?.id]);
+  }, [bookId, initialChapterId, selectChapter]);
 
   useEffect(() => {
     refreshChapters();
     const handleDataChanged = async () => {
       const list = await repository.getChapters(bookId);
       setChapters(list);
-      if (activeChapter) {
-        const freshActive = list.find(c => c.id === activeChapter.id);
-        if (freshActive) {
-          setActiveChapter(freshActive);
-        }
-      }
     };
     window.addEventListener('storybible_data_changed', handleDataChanged);
     return () => window.removeEventListener('storybible_data_changed', handleDataChanged);
@@ -101,7 +106,7 @@ export default function ChaptersPage() {
   };
 
   const handleSaveContent = async () => {
-    if (!activeChapter) return;
+    if (!activeChapter || loadedChapterIdRef.current !== activeChapter.id) return;
     setSaveStatus('saving');
     await repository.updateChapter(activeChapter.id, {
       title,
@@ -109,20 +114,32 @@ export default function ChaptersPage() {
       content
     });
     setSaveStatus('saved');
-    setSaveToast('Chapter saved to Story Bible!');
-    setTimeout(() => setSaveToast(''), 2500);
   };
 
-  // Auto-save on content change with 800ms debounce
+  // Safe Auto-save on content change with 1000ms debounce
   useEffect(() => {
-    if (!activeChapter) return;
-    setSaveStatus('unsaved');
-    const timer = setTimeout(() => {
-      handleSaveContent();
-    }, 800);
+    if (!activeChapter || loadedChapterIdRef.current !== activeChapter.id) return;
+    
+    // Check if content actually modified from activeChapter baseline
+    if (
+      content === activeChapter.content &&
+      title === activeChapter.title &&
+      chapterNumber === activeChapter.chapterNumber
+    ) {
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, [content, title, chapterNumber]);
+    setSaveStatus('unsaved');
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    
+    autoSaveTimerRef.current = setTimeout(() => {
+      handleSaveContent();
+    }, 1000);
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [content, title, chapterNumber, activeChapter]);
 
   // Open review modal for existing pending or approved extraction draft
   const handleOpenPendingReview = async (chapId?: string) => {
@@ -414,13 +431,22 @@ ${content}
                 </span>
               </div>
 
-              {/* Full Screen Writing Pad Button */}
+              {/* Start Sprint Mode 2.0 Button */}
+              <button
+                onClick={() => setSprintLauncherOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700 text-xs font-extrabold transition-all shadow-xl"
+                title="Start Offline Sprint Writing Session"
+              >
+                <Flame className="w-3.5 h-3.5 text-amber-200 fill-amber-300" /> Start Sprint
+              </button>
+
+              {/* Zen Writing Pad Button */}
               <button
                 onClick={() => setZenPadOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#7c3aed]/20 border border-[#7c3aed]/40 text-[#a78bfa] hover:bg-[#7c3aed] hover:text-white text-xs font-bold transition-all shadow-purple"
-                title="Open Distraction-Free Full-Screen Writing Pad"
+                title="Open Zen Writing Pad"
               >
-                <Maximize2 className="w-3.5 h-3.5" /> Full-Screen Pad
+                <Maximize2 className="w-3.5 h-3.5" /> Zen Pad
               </button>
 
               {/* Copy Full Prompt Button */}
@@ -607,6 +633,48 @@ ${content}
           refreshChapters(activeChapter?.id);
         }}
       />
+
+      {/* Sprint Mode 2.0 Launcher Modal */}
+      <SprintLauncherModal
+        isOpen={sprintLauncherOpen}
+        onClose={() => setSprintLauncherOpen(false)}
+        onStartSprint={(cfg) => {
+          setActiveSprintConfig(cfg);
+          setSprintLauncherOpen(false);
+        }}
+        defaultBookId={bookId}
+        defaultChapterId={activeChapter?.id}
+      />
+
+      {/* Active Fullscreen Sprint Pad */}
+      {activeSprintConfig && (
+        <SprintModePad
+          isOpen={!!activeSprintConfig}
+          bookId={activeSprintConfig.bookId}
+          chapterId={activeSprintConfig.chapterId}
+          chapterTitle={title}
+          chapterNumber={chapterNumber}
+          initialContent={content}
+          goalType={activeSprintConfig.goalType}
+          goalTarget={activeSprintConfig.goalTarget}
+          focusMode={activeSprintConfig.focusMode}
+          typewriterMode={activeSprintConfig.typewriterMode}
+          theme={activeSprintConfig.theme}
+          onSaveChapterContent={async (newText) => {
+            setContent(newText);
+            if (activeChapter) {
+              await repository.updateChapter(activeChapter.id, { content: newText });
+            }
+          }}
+          onSprintFinish={(completedSession) => {
+            sprintStore.saveSession(completedSession);
+            setActiveSprintConfig(null);
+            setSaveToast(`Sprint Complete! ${completedSession.wordsAdded} words written (${completedSession.averageWpm} WPM)`);
+            setTimeout(() => setSaveToast(''), 4000);
+          }}
+          onClose={() => setActiveSprintConfig(null)}
+        />
+      )}
     </div>
   );
 }

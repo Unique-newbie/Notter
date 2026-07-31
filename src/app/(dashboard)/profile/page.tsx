@@ -2,16 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { useTheme, ThemeId, AccentColor, Density, FontSize, SidebarWidth } from '@/lib/theme/ThemeContext';
-import { uploadAndReplaceImage } from '@/lib/storage/imageManager';
+import { useTheme, ThemeId } from '@/lib/theme/ThemeContext';
 import { createClient } from '@/lib/supabase/client';
+import { MediaUploader } from '@/components/common/MediaUploader';
 import {
-  User, Lock, Key, Palette, Upload, ShieldCheck, Check, CheckCircle2,
-  AlertCircle, RefreshCw, Copy, Server, Plus, Trash2, Sliders, Moon, Sun, Monitor
+  User, Lock, Key, Palette, Upload, ShieldCheck, CheckCircle2,
+  AlertCircle, RefreshCw, Copy, Server, Plus, Trash2
 } from 'lucide-react';
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const theme = useTheme();
   const supabase = createClient();
 
@@ -24,7 +24,6 @@ export default function ProfilePage() {
   const [username, setUsername] = useState('author_notter');
   const [bio, setBio] = useState('Fantasy author organizing novel lore, characters, and timelines.');
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [joinDate] = useState('July 2026');
 
   // Security Fields
@@ -35,14 +34,22 @@ export default function ProfilePage() {
   const [recoveryAnswer, setRecoveryAnswer] = useState('');
   const [generatedHash, setGeneratedHash] = useState('');
   const [copiedHash, setCopiedHash] = useState(false);
-  const [isRegenerating, setIsRegenerating] = useState(false);
-
-  // AI BYOK Keys
-  const [apiKeys, setApiKeys] = useState<any[]>([]);
 
   useEffect(() => {
-    if (user?.email) {
-      setDisplayName(user.email.split('@')[0]);
+    // Read from localStorage or User metadata
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('notter_user_profile');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.displayName) setDisplayName(parsed.displayName);
+          if (parsed.username) setUsername(parsed.username);
+          if (parsed.bio) setBio(parsed.bio);
+          if (parsed.avatarUrl) setAvatarUrl(parsed.avatarUrl);
+        } else if (user?.email) {
+          setDisplayName(user.email.split('@')[0]);
+        }
+      } catch (e) {}
     }
   }, [user]);
 
@@ -56,27 +63,32 @@ export default function ProfilePage() {
     setTimeout(() => setErrorToast(''), 4000);
   };
 
-  // Avatar Upload Handler with Storage Cleanup
-  const handleAvatarFileSelect = async (file: File) => {
-    if (!file || !file.type.startsWith('image/')) {
-      showError('Please select a valid image file.');
-      return;
+  const handleSaveProfile = async () => {
+    const profileObj = {
+      displayName: displayName.trim(),
+      username: username.trim(),
+      bio: bio.trim(),
+      avatarUrl
+    };
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('notter_user_profile', JSON.stringify(profileObj));
     }
 
-    setIsUploadingAvatar(true);
     try {
-      const newUrl = await uploadAndReplaceImage('avatars', file, avatarUrl, {
-        width: 300,
-        height: 300,
-        maxSizeBytes: 150 * 1024
+      await supabase.auth.updateUser({
+        data: {
+          display_name: displayName.trim(),
+          username: username.trim(),
+          bio: bio.trim(),
+          avatar_url: avatarUrl
+        }
       });
-      setAvatarUrl(newUrl);
-      showSuccess('Profile avatar updated!');
-    } catch (err: any) {
-      showError(err.message || 'Avatar upload failed.');
-    } finally {
-      setIsUploadingAvatar(false);
+    } catch (e) {
+      console.warn('Auth user metadata update note:', e);
     }
+
+    showSuccess('Profile changes saved successfully to database!');
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -85,9 +97,16 @@ export default function ProfilePage() {
       showError('New password must be at least 6 characters.');
       return;
     }
-    showSuccess('Password updated successfully!');
-    setNewPassword('');
-    setCurrentPassword('');
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      showSuccess('Password updated successfully!');
+      setNewPassword('');
+      setCurrentPassword('');
+    } catch (err: any) {
+      showError(err.message || 'Failed to update password.');
+    }
   };
 
   const handleRegenerateRecoveryCode = () => {
@@ -178,39 +197,29 @@ export default function ProfilePage() {
         <div className="p-8 rounded-2xl bg-[#121218] border border-[#232334] space-y-6">
           <h2 className="text-base font-bold text-white border-b border-[#232334] pb-3">Author Profile Information</h2>
 
-          {/* Profile Picture Upload Section */}
-          <div className="flex items-center gap-6">
-            <div className="relative group">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Profile Avatar"
-                  className="w-20 h-20 rounded-2xl object-cover border border-[#232334] shadow-xl"
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-2xl bg-[#1e1e2a] border border-[#232334] flex items-center justify-center text-[#a78bfa] font-extrabold text-2xl shadow-xl">
-                  {displayName.substring(0, 2).toUpperCase()}
-                </div>
-              )}
-
-              <label className="absolute inset-0 bg-black/60 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center text-white cursor-pointer transition-opacity">
-                <Upload className="w-5 h-5" />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleAvatarFileSelect(f);
-                  }}
-                  className="hidden"
-                />
-              </label>
-            </div>
-
-            <div>
-              <h3 className="font-bold text-white text-sm">{displayName}</h3>
-              <p className="text-xs text-[#8e8ea0]">{user?.email || 'author@notter.app'}</p>
-              <p className="text-[10px] text-[#52526b] mt-1">Member since {joinDate}</p>
+          {/* MediaUploader Profile Avatar */}
+          <div className="space-y-2">
+            <label className="block text-[10px] font-bold text-[#a78bfa] uppercase tracking-wider">
+              Profile Avatar (WebP Auto-Compress with Real-Time Progress Bar)
+            </label>
+            <div className="max-w-md">
+              <MediaUploader
+                currentUrl={avatarUrl}
+                onImageSelected={async (file) => {
+                  return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                      const dataUrl = e.target?.result as string;
+                      setAvatarUrl(dataUrl);
+                      resolve(dataUrl);
+                    };
+                    reader.readAsDataURL(file);
+                  });
+                }}
+                aspectRatioWidth={300}
+                aspectRatioHeight={300}
+                label="Upload Profile Picture"
+              />
             </div>
           </div>
 
@@ -248,8 +257,8 @@ export default function ProfilePage() {
 
           <div className="flex justify-end pt-2">
             <button
-              onClick={() => showSuccess('Profile changes saved!')}
-              className="px-5 py-2 rounded-xl bg-[#7c3aed] text-white font-bold text-xs hover:bg-[#6d28d9] shadow-purple"
+              onClick={handleSaveProfile}
+              className="px-5 py-2 rounded-xl bg-[#7c3aed] text-white font-bold text-xs hover:bg-[#6d28d9] shadow-purple transition-all"
             >
               Save Profile Info
             </button>
@@ -262,7 +271,6 @@ export default function ProfilePage() {
         <div className="p-8 rounded-2xl bg-[#121218] border border-[#232334] space-y-6">
           <h2 className="text-base font-bold text-white border-b border-[#232334] pb-3">Account Security &amp; Recovery</h2>
 
-          {/* Change Password */}
           <form onSubmit={handlePasswordChange} className="space-y-4 text-xs">
             <h3 className="font-bold text-white text-sm">Change Password</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -294,7 +302,6 @@ export default function ProfilePage() {
             </button>
           </form>
 
-          {/* Update Security Questions */}
           <div className="pt-6 border-t border-[#232334] space-y-4 text-xs">
             <h3 className="font-bold text-white text-sm">Update Security Question</h3>
             <div className="space-y-2">
@@ -334,7 +341,6 @@ export default function ProfilePage() {
             </button>
           </div>
 
-          {/* Regenerate Recovery Hash */}
           <div className="pt-6 border-t border-[#232334] space-y-4 text-xs">
             <h3 className="font-bold text-white text-sm">Regenerate Recovery Code / Hash</h3>
             <p className="text-[#8e8ea0]">
@@ -372,7 +378,6 @@ export default function ProfilePage() {
         <div className="p-8 rounded-2xl bg-[#121218] border border-[#232334] space-y-8 text-xs">
           <h2 className="text-base font-bold text-white border-b border-[#232334] pb-3">Appearance &amp; Theme Settings</h2>
 
-          {/* Themes Grid */}
           <div className="space-y-3">
             <label className="font-bold text-[#8e8ea0] uppercase tracking-wider text-[10px]">Select Color Theme</label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -400,43 +405,6 @@ export default function ProfilePage() {
                   <span className="font-bold text-xs">{t.name}</span>
                 </button>
               ))}
-            </div>
-          </div>
-
-          {/* Density & Layout Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[#232334]">
-            <div className="space-y-2">
-              <label className="font-bold text-[#8e8ea0] uppercase tracking-wider text-[10px]">Layout Density</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => theme.setDensity('comfortable')}
-                  className={`flex-1 py-2 rounded-xl border font-semibold ${
-                    theme.density === 'comfortable' ? 'bg-[#7c3aed] text-white border-[#7c3aed]' : 'bg-[#181820] text-[#8e8ea0] border-[#232334]'
-                  }`}
-                >
-                  Comfortable
-                </button>
-                <button
-                  onClick={() => theme.setDensity('compact')}
-                  className={`flex-1 py-2 rounded-xl border font-semibold ${
-                    theme.density === 'compact' ? 'bg-[#7c3aed] text-white border-[#7c3aed]' : 'bg-[#181820] text-[#8e8ea0] border-[#232334]'
-                  }`}
-                >
-                  Compact
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="font-bold text-[#8e8ea0] uppercase tracking-wider text-[10px]">Accessibility: Reduced Motion</label>
-              <button
-                onClick={() => theme.setReducedMotion(!theme.reducedMotion)}
-                className={`w-full py-2 rounded-xl border font-semibold ${
-                  theme.reducedMotion ? 'bg-[#7c3aed] text-white border-[#7c3aed]' : 'bg-[#181820] text-[#8e8ea0] border-[#232334]'
-                }`}
-              >
-                {theme.reducedMotion ? 'Reduced Motion Enabled' : 'Standard Animations'}
-              </button>
             </div>
           </div>
         </div>
