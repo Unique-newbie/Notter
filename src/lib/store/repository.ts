@@ -1,3 +1,8 @@
+/**
+ * @module StoryRepository
+ * @description Facade for the NotterPad data store. Delegates calls to modular repositories.
+ */
+
 import {
   Book, Chapter, Character, Ability, Item, LocationEntity,
   Organization, Relationship, TimelineEvent, PlotThread,
@@ -6,24 +11,31 @@ import {
 } from '@/types';
 import { indexedDBAdapter } from '@/lib/storage/indexedDBAdapter';
 import { isHighlySimilar } from '@/lib/ai/validator';
+import { generateUUID } from './utils';
 
-function isValidUUID(str: string): boolean {
-  if (!str || typeof str !== 'string') return false;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
-}
-
-function generateUUID(): string {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-}
+import { BookRepository } from './bookRepository';
+import { ChapterRepository } from './chapterRepository';
+import { CharacterRepository } from './characterRepository';
+import { MergeEngine } from './mergeEngine';
+import { AIExtractionRepository } from './aiExtractionRepository';
 
 class StoryRepository {
   private notificationTimer: NodeJS.Timeout | null = null;
+
+  private bookRepo: BookRepository;
+  private chapterRepo: ChapterRepository;
+  private charRepo: CharacterRepository;
+  private mergeEngine: MergeEngine;
+  private aiRepo: AIExtractionRepository;
+
+  constructor() {
+    const notifyFn = this.notifyDataChanged.bind(this);
+    this.bookRepo = new BookRepository(notifyFn);
+    this.chapterRepo = new ChapterRepository(notifyFn);
+    this.charRepo = new CharacterRepository(notifyFn);
+    this.mergeEngine = new MergeEngine(notifyFn);
+    this.aiRepo = new AIExtractionRepository(notifyFn, this.chapterRepo);
+  }
 
   private notifyDataChanged() {
     if (typeof window !== 'undefined') {
@@ -35,237 +47,33 @@ class StoryRepository {
   }
 
   // ==================== BOOK METHODS ====================
-
-  async getBooks(): Promise<Book[]> {
-    try {
-      const books = await indexedDBAdapter.getAll<Book>('books');
-      let favIds: string[] = [];
-      if (typeof window !== 'undefined') {
-        try { favIds = JSON.parse(localStorage.getItem('notter_fav_books') || '[]'); } catch (e) {}
-      }
-
-      return books.map(b => ({
-        ...b,
-        isFavorite: favIds.includes(b.id)
-      }));
-    } catch (e) {
-      return [];
-    }
-  }
-
-  async getBook(id: string): Promise<Book | undefined> {
-    try {
-      return await indexedDBAdapter.getById<Book>('books', id);
-    } catch (e) {
-      return undefined;
-    }
-  }
-
-  async createBook(book: Omit<Book, 'id' | 'createdAt' | 'updatedAt' | 'chapterCount' | 'totalWordCount'>): Promise<Book | null> {
-    const newBook: Book = {
-      id: generateUUID(),
-      title: book.title,
-      description: book.description || '',
-      coverColor: book.coverColor || '#7C3AED',
-      coverUrl: book.coverUrl,
-      genre: book.genre || 'Fantasy',
-      status: book.status || 'Drafting',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    await indexedDBAdapter.save('books', newBook);
-    this.notifyDataChanged();
-    return newBook;
-  }
-
-  async updateBook(id: string, updates: Partial<Book>): Promise<boolean> {
-    const existing = await this.getBook(id);
-    if (!existing) return false;
-
-    const updated: Book = {
-      ...existing,
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
-
-    await indexedDBAdapter.save('books', updated);
-    this.notifyDataChanged();
-    return true;
-  }
-
-  async toggleFavoriteBook(id: string, currentFav: boolean): Promise<boolean> {
-    if (typeof window !== 'undefined') {
-      const favs = JSON.parse(localStorage.getItem('notter_fav_books') || '[]');
-      let nextFavs = [];
-      if (currentFav) {
-        nextFavs = favs.filter((fId: string) => fId !== id);
-      } else {
-        nextFavs = [...favs, id];
-      }
-      localStorage.setItem('notter_fav_books', JSON.stringify(nextFavs));
-    }
-    this.notifyDataChanged();
-    return true;
-  }
-
-  async archiveBook(id: string): Promise<boolean> {
-    return this.updateBook(id, { status: 'Archived' });
-  }
-
-  async restoreBook(id: string): Promise<boolean> {
-    return this.updateBook(id, { status: 'Drafting' });
-  }
-
-  async deleteBook(id: string): Promise<boolean> {
-    const storesToCascade = [
-      'chapters', 'characters', 'abilities', 'items',
-      'locations', 'organizations', 'relationships',
-      'dialogue_facts', 'timeline_events', 'ai_extractions'
-    ];
-
-    for (const storeName of storesToCascade) {
-      await indexedDBAdapter.deleteAllByBookId(storeName, id);
-    }
-
-    await indexedDBAdapter.delete('books', id);
-
-    if (typeof window !== 'undefined') {
-      try {
-        const favs = JSON.parse(localStorage.getItem('notter_fav_books') || '[]');
-        const updatedFavs = favs.filter((fId: string) => fId !== id);
-        localStorage.setItem('notter_fav_books', JSON.stringify(updatedFavs));
-      } catch (e) {}
-    }
-
-    this.notifyDataChanged();
-    return true;
-  }
+  async getBooks(): Promise<Book[]> { return this.bookRepo.getBooks(); }
+  async getBook(id: string): Promise<Book | undefined> { return this.bookRepo.getBook(id); }
+  async createBook(book: Omit<Book, 'id' | 'createdAt' | 'updatedAt' | 'chapterCount' | 'totalWordCount'>): Promise<Book | null> { return this.bookRepo.createBook(book); }
+  async updateBook(id: string, updates: Partial<Book>): Promise<boolean> { return this.bookRepo.updateBook(id, updates); }
+  async toggleFavoriteBook(id: string, currentFav: boolean): Promise<boolean> { return this.bookRepo.toggleFavoriteBook(id, currentFav); }
+  async archiveBook(id: string): Promise<boolean> { return this.bookRepo.archiveBook(id); }
+  async restoreBook(id: string): Promise<boolean> { return this.bookRepo.restoreBook(id); }
+  async deleteBook(id: string): Promise<boolean> { return this.bookRepo.deleteBook(id); }
 
   // ==================== CHAPTER METHODS ====================
+  async getChapters(bookId: string): Promise<Chapter[]> { return this.chapterRepo.getChapters(bookId); }
+  async getChapter(id: string): Promise<Chapter | undefined> { return this.chapterRepo.getChapter(id); }
+  async createChapter(bookId: string, title: string, content: string, chapterNumber?: number): Promise<Chapter | null> { return this.chapterRepo.createChapter(bookId, title, content, chapterNumber); }
+  async updateChapter(id: string, updates: Partial<Chapter>): Promise<boolean> { return this.chapterRepo.updateChapter(id, updates); }
+  async deleteChapter(id: string): Promise<boolean> { return this.chapterRepo.deleteChapter(id); }
 
-  async getChapters(bookId: string): Promise<Chapter[]> {
-    try {
-      const chapters = await indexedDBAdapter.getAllByBookId<Chapter>('chapters', bookId);
-      return chapters.sort((a, b) => a.chapterNumber - b.chapterNumber);
-    } catch (e) {
-      return [];
-    }
-  }
+  // ==================== CHARACTER METHODS ====================
+  async getCharacters(bookId: string): Promise<Character[]> { return this.charRepo.getCharacters(bookId); }
+  async getCharacter(id: string): Promise<Character | undefined> { return this.charRepo.getCharacter(id); }
+  async createCharacter(bookId: string, char: Partial<Character> & { name: string }): Promise<Character | null> { return this.charRepo.createCharacter(bookId, char); }
+  async updateCharacter(id: string, updates: Partial<Character>): Promise<boolean> { return this.charRepo.updateCharacter(id, updates); }
+  async deleteCharacter(id: string): Promise<boolean> { return this.charRepo.deleteCharacter(id); }
 
-  async getChapter(id: string): Promise<Chapter | undefined> {
-    return indexedDBAdapter.getById<Chapter>('chapters', id);
-  }
-
-  async createChapter(bookId: string, title: string, content: string, chapterNumber?: number): Promise<Chapter | null> {
-    const existingChaps = await this.getChapters(bookId);
-    const nextNum = chapterNumber || (existingChaps.length > 0 ? Math.max(...existingChaps.map(c => c.chapterNumber)) + 1 : 1);
-    const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
-
-    const newChap: Chapter = {
-      id: generateUUID(),
-      bookId,
-      title: title || `Chapter ${nextNum}`,
-      chapterNumber: nextNum,
-      content: content || '',
-      wordCount,
-      readingTimeMinutes: Math.max(1, Math.ceil(wordCount / 225)),
-      status: 'Unprocessed',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    await indexedDBAdapter.save('chapters', newChap);
-    this.notifyDataChanged();
-    return newChap;
-  }
-
-  async updateChapter(id: string, updates: Partial<Chapter>): Promise<boolean> {
-    const existing = await indexedDBAdapter.getById<Chapter>('chapters', id);
-    if (!existing) return false;
-
-    const wordCount = updates.content !== undefined 
-      ? (updates.content.trim() ? updates.content.trim().split(/\s+/).length : 0)
-      : existing.wordCount;
-
-    const updated: Chapter = {
-      ...existing,
-      ...updates,
-      wordCount,
-      readingTimeMinutes: Math.max(1, Math.ceil(wordCount / 225)),
-      updatedAt: new Date().toISOString()
-    };
-
-    await indexedDBAdapter.save('chapters', updated);
-    this.notifyDataChanged();
-    return true;
-  }
-
-  async deleteChapter(id: string): Promise<boolean> {
-    await indexedDBAdapter.delete('chapters', id);
-    this.notifyDataChanged();
-    return true;
-  }
-
-  // ==================== ENTITY GETTERS & CREATORS ====================
-
-  async getCharacters(bookId: string): Promise<Character[]> {
-    return indexedDBAdapter.getAllByBookId<Character>('characters', bookId);
-  }
-
-  async getCharacter(id: string): Promise<Character | undefined> {
-    return indexedDBAdapter.getById<Character>('characters', id);
-  }
-
-  async createCharacter(
-    bookId: string,
-    char: Partial<Character> & { name: string }
-  ): Promise<Character | null> {
-    const newChar: Character = {
-      name: char.name,
-      aliases: char.aliases || [],
-      summary: char.summary || '',
-      status: char.status || 'Active',
-      knownFacts: char.knownFacts || [],
-      explicitAppearanceFacts: char.explicitAppearanceFacts || [],
-      dynamicAttributes: char.dynamicAttributes || {},
-      id: generateUUID(),
-      bookId,
-      appearedInChapterIds: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    await indexedDBAdapter.save('characters', newChar);
-    this.notifyDataChanged();
-    return newChar;
-  }
-
-  async updateCharacter(id: string, updates: Partial<Character>): Promise<boolean> {
-    const existing = await indexedDBAdapter.getById<Character>('characters', id);
-    if (!existing) return false;
-
-    const updated: Character = {
-      ...existing,
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
-
-    await indexedDBAdapter.save('characters', updated);
-    this.notifyDataChanged();
-    return true;
-  }
-
-  async deleteCharacter(id: string): Promise<boolean> {
-    await indexedDBAdapter.delete('characters', id);
-    this.notifyDataChanged();
-    return true;
-  }
-
+  // ==================== ABILITY METHODS ====================
   async getAbilities(bookId: string): Promise<Ability[]> {
     return indexedDBAdapter.getAllByBookId<Ability>('abilities', bookId);
   }
-
   async createAbility(bookId: string, ability: Partial<Ability> & { name: string }): Promise<Ability | null> {
     const newAbility: Ability = {
       name: ability.name,
@@ -280,26 +88,23 @@ class StoryRepository {
     this.notifyDataChanged();
     return newAbility;
   }
-
   async updateAbility(id: string, updates: Partial<Ability>): Promise<boolean> {
     const existing = await indexedDBAdapter.getById<Ability>('abilities', id);
     if (!existing) return false;
-    const updated = { ...existing, ...updates };
-    await indexedDBAdapter.save('abilities', updated);
+    await indexedDBAdapter.save('abilities', { ...existing, ...updates });
     this.notifyDataChanged();
     return true;
   }
-
   async deleteAbility(id: string): Promise<boolean> {
     await indexedDBAdapter.delete('abilities', id);
     this.notifyDataChanged();
     return true;
   }
 
+  // ==================== ITEM METHODS ====================
   async getItems(bookId: string): Promise<Item[]> {
     return indexedDBAdapter.getAllByBookId<Item>('items', bookId);
   }
-
   async createItem(bookId: string, item: Partial<Item> & { name: string }): Promise<Item | null> {
     const newItem: Item = {
       name: item.name,
@@ -317,26 +122,23 @@ class StoryRepository {
     this.notifyDataChanged();
     return newItem;
   }
-
   async updateItem(id: string, updates: Partial<Item>): Promise<boolean> {
     const existing = await indexedDBAdapter.getById<Item>('items', id);
     if (!existing) return false;
-    const updated = { ...existing, ...updates };
-    await indexedDBAdapter.save('items', updated);
+    await indexedDBAdapter.save('items', { ...existing, ...updates });
     this.notifyDataChanged();
     return true;
   }
-
   async deleteItem(id: string): Promise<boolean> {
     await indexedDBAdapter.delete('items', id);
     this.notifyDataChanged();
     return true;
   }
 
+  // ==================== LOCATION METHODS ====================
   async getLocations(bookId: string): Promise<LocationEntity[]> {
     return indexedDBAdapter.getAllByBookId<LocationEntity>('locations', bookId);
   }
-
   async createLocation(bookId: string, loc: Partial<LocationEntity> & { name: string }): Promise<LocationEntity | null> {
     const newLoc: LocationEntity = {
       name: loc.name,
@@ -353,30 +155,26 @@ class StoryRepository {
     this.notifyDataChanged();
     return newLoc;
   }
-
   async updateLocation(id: string, updates: Partial<LocationEntity>): Promise<boolean> {
     const existing = await indexedDBAdapter.getById<LocationEntity>('locations', id);
     if (!existing) return false;
-    const updated = { ...existing, ...updates };
-    await indexedDBAdapter.save('locations', updated);
+    await indexedDBAdapter.save('locations', { ...existing, ...updates });
     this.notifyDataChanged();
     return true;
   }
-
   async deleteLocation(id: string): Promise<boolean> {
     await indexedDBAdapter.delete('locations', id);
     this.notifyDataChanged();
     return true;
   }
 
+  // ==================== ORGANIZATION & RELATIONSHIP METHODS ====================
   async getOrganizations(bookId: string): Promise<Organization[]> {
     return indexedDBAdapter.getAllByBookId<Organization>('organizations', bookId);
   }
-
   async getRelationships(bookId: string): Promise<Relationship[]> {
     return indexedDBAdapter.getAllByBookId<Relationship>('relationships', bookId);
   }
-
   async addRelationship(bookId: string, char1: string, char2: string, type: string, description: string = ''): Promise<Relationship | null> {
     const newRel: Relationship = {
       id: generateUUID(),
@@ -392,22 +190,20 @@ class StoryRepository {
     this.notifyDataChanged();
     return newRel;
   }
-
   async deleteRelationship(id: string): Promise<boolean> {
     await indexedDBAdapter.delete('relationships', id);
     this.notifyDataChanged();
     return true;
   }
 
+  // ==================== DIALOGUE FACTS & TIMELINE ====================
   async getDialogueFacts(bookId: string): Promise<DialogueFactEntity[]> {
     return indexedDBAdapter.getAllByBookId<DialogueFactEntity>('dialogue_facts', bookId);
   }
-
   async getTimelineEvents(bookId: string): Promise<TimelineEvent[]> {
     const events = await indexedDBAdapter.getAllByBookId<TimelineEvent>('timeline_events', bookId);
     return events.sort((a, b) => a.chapterNumber - b.chapterNumber);
   }
-
   async createTimelineEvent(bookId: string, event: Omit<TimelineEvent, 'id' | 'bookId' | 'createdAt'>): Promise<TimelineEvent | null> {
     const newEv: TimelineEvent = {
       ...event,
@@ -419,7 +215,6 @@ class StoryRepository {
     this.notifyDataChanged();
     return newEv;
   }
-
   async deleteTimelineEvent(id: string): Promise<boolean> {
     await indexedDBAdapter.delete('timeline_events', id);
     this.notifyDataChanged();
@@ -427,7 +222,6 @@ class StoryRepository {
   }
 
   // ==================== DUPLICATE DETECTION ====================
-
   async findDuplicateSuggestions(bookId: string): Promise<{ char1: Character; char2: Character; confidence: number; reason?: string }[]> {
     const chars = await this.getCharacters(bookId);
     const res: { char1: Character; char2: Character; confidence: number; reason?: string }[] = [];
@@ -440,7 +234,6 @@ class StoryRepository {
     }
     return res;
   }
-
   async findDuplicateAbilitySuggestions(bookId: string): Promise<{ item1: Ability; item2: Ability; confidence: number; reason?: string }[]> {
     const items = await this.getAbilities(bookId);
     const res: { item1: Ability; item2: Ability; confidence: number; reason?: string }[] = [];
@@ -453,7 +246,6 @@ class StoryRepository {
     }
     return res;
   }
-
   async findDuplicateItemSuggestions(bookId: string): Promise<{ item1: Item; item2: Item; confidence: number; reason?: string }[]> {
     const items = await this.getItems(bookId);
     const res: { item1: Item; item2: Item; confidence: number; reason?: string }[] = [];
@@ -466,7 +258,6 @@ class StoryRepository {
     }
     return res;
   }
-
   async findDuplicateLocationSuggestions(bookId: string): Promise<{ item1: LocationEntity; item2: LocationEntity; confidence: number; reason?: string }[]> {
     const items = await this.getLocations(bookId);
     const res: { item1: LocationEntity; item2: LocationEntity; confidence: number; reason?: string }[] = [];
@@ -481,67 +272,24 @@ class StoryRepository {
   }
 
   // ==================== UNIVERSAL MERGE SYSTEM ====================
-
-  async intelligentMergeCharacters(
-    bookId: string,
-    primaryId: string,
-    secondaryId: string,
-    textResolutionStrategy: 'keep_primary' | 'keep_secondary' | 'combine' = 'combine',
-    auditNotes: string = ''
-  ): Promise<boolean> {
-    const primary = await this.getCharacter(primaryId);
-    const secondary = await this.getCharacter(secondaryId);
-    if (!primary || !secondary) return false;
-
-    let mergedSummary = primary.summary;
-    if (textResolutionStrategy === 'keep_secondary') mergedSummary = secondary.summary;
-    if (textResolutionStrategy === 'combine') mergedSummary = `${primary.summary}\n\n${secondary.summary}`.trim();
-
-    const mergedKnownFacts = Array.from(new Set([...(primary.knownFacts || []), ...(secondary.knownFacts || [])]));
-    const mergedAppearanceFacts = Array.from(new Set([...(primary.explicitAppearanceFacts || []), ...(secondary.explicitAppearanceFacts || [])]));
-    const mergedAliases = Array.from(new Set([...(primary.aliases || []), secondary.name, ...(secondary.aliases || [])]));
-
-    await this.updateCharacter(primaryId, {
-      summary: mergedSummary,
-      knownFacts: mergedKnownFacts,
-      explicitAppearanceFacts: mergedAppearanceFacts,
-      aliases: mergedAliases
-    });
-
-    await this.deleteCharacter(secondaryId);
-    this.notifyDataChanged();
-    return true;
+  async intelligentMergeCharacters(bookId: string, primaryId: string, secondaryId: string, textResolutionStrategy: 'keep_primary' | 'keep_secondary' | 'combine' = 'combine', auditNotes: string = ''): Promise<boolean> {
+    return this.mergeEngine.intelligentMergeCharacters(bookId, primaryId, secondaryId, textResolutionStrategy, auditNotes);
   }
-
   async intelligentMergeAbilities(bookId: string, primaryId: string, secondaryId: string): Promise<boolean> {
-    await indexedDBAdapter.delete('abilities', secondaryId);
-    this.notifyDataChanged();
-    return true;
+    return this.mergeEngine.intelligentMergeAbilities(bookId, primaryId, secondaryId);
   }
-
   async intelligentMergeItems(bookId: string, primaryId: string, secondaryId: string): Promise<boolean> {
-    await indexedDBAdapter.delete('items', secondaryId);
-    this.notifyDataChanged();
-    return true;
+    return this.mergeEngine.intelligentMergeItems(bookId, primaryId, secondaryId);
   }
-
   async intelligentMergeLocations(bookId: string, primaryId: string, secondaryId: string): Promise<boolean> {
-    await indexedDBAdapter.delete('locations', secondaryId);
-    this.notifyDataChanged();
-    return true;
+    return this.mergeEngine.intelligentMergeLocations(bookId, primaryId, secondaryId);
   }
-
   async getMergeHistory(bookId?: string): Promise<any[]> {
-    return [];
+    return this.mergeEngine.getMergeHistory(bookId);
   }
 
   // ==================== LIVING STORY STATE RECONSTRUCTION ====================
-
-  async getHistoricalStoryState(bookId: string, maxChapterNumber: number): Promise<{
-    characters: Character[];
-    abilities: Ability[];
-    items: Item[];
-  }> {
+  async getHistoricalStoryState(bookId: string, maxChapterNumber: number): Promise<{ characters: Character[]; abilities: Ability[]; items: Item[]; }> {
     const allChars = await this.getCharacters(bookId);
     const allAbilities = await this.getAbilities(bookId);
     const allItems = await this.getItems(bookId);
@@ -551,10 +299,7 @@ class StoryRepository {
       const validProgression = (char.progressionHistory || []).filter(p => p.chapterNumber <= maxChapterNumber);
       const remappedAttrs: Record<string, string | number> = { ...(char.dynamicAttributes || {}) };
 
-      validProgression.forEach(p => {
-        remappedAttrs[p.attribute] = p.newValue;
-      });
-
+      validProgression.forEach(p => { remappedAttrs[p.attribute] = p.newValue; });
       const lastApp = validApps.length > 0 ? validApps[validApps.length - 1] : null;
 
       return {
@@ -567,72 +312,30 @@ class StoryRepository {
       };
     });
 
-    return {
-      characters: historicalChars,
-      abilities: allAbilities,
-      items: allItems
-    };
+    return { characters: historicalChars, abilities: allAbilities, items: allItems };
   }
 
   // ==================== AI EXTRACTION DRAFTS ====================
-
   async saveDraftExtraction(bookId: string, chapterId: string, extractionData: StructuredExtractionJSON): Promise<AIExtraction> {
-    return this.saveAIExtractionDraft(bookId, chapterId, extractionData);
+    return this.aiRepo.saveDraftExtraction(bookId, chapterId, extractionData);
   }
-
   async saveAIExtractionDraft(bookId: string, chapterId: string, extractionData: StructuredExtractionJSON): Promise<AIExtraction> {
-    const draftId = generateUUID();
-    const draft: AIExtraction = {
-      id: draftId,
-      bookId,
-      chapterId,
-      extraction: extractionData,
-      status: 'Pending',
-      warnings: extractionData.warnings || [],
-      createdAt: new Date().toISOString()
-    };
-
-    await indexedDBAdapter.save('ai_extractions', draft);
-    if (chapterId) {
-      await this.updateChapter(chapterId, { status: 'Pending Review' });
-    }
-    this.notifyDataChanged();
-    return draft;
+    return this.aiRepo.saveAIExtractionDraft(bookId, chapterId, extractionData);
   }
-
   async getExtractionForChapter(chapterId: string): Promise<AIExtraction | null> {
-    try {
-      const all = await indexedDBAdapter.getAll<AIExtraction>('ai_extractions');
-      return all.find(e => e.chapterId === chapterId) || null;
-    } catch (e) {
-      return null;
-    }
+    return this.aiRepo.getExtractionForChapter(chapterId);
   }
-
   async getExtraction(id: string): Promise<AIExtraction | null> {
-    try {
-      return (await indexedDBAdapter.getById<AIExtraction>('ai_extractions', id)) || null;
-    } catch (e) {
-      return null;
-    }
+    return this.aiRepo.getExtraction(id);
   }
-
   async approveExtraction(extractionId: string): Promise<boolean> {
     return this.approveAndApplyExtraction(extractionId);
   }
-
   async approveExtractionGranular(extractionId: string, selections?: any, overrides?: any): Promise<boolean> {
     return this.approveAndApplyExtraction(extractionId);
   }
-
   async rejectExtraction(extractionId: string): Promise<boolean> {
-    const draft = await indexedDBAdapter.getById<AIExtraction>('ai_extractions', extractionId);
-    if (draft && draft.chapterId) {
-      await this.updateChapter(draft.chapterId, { status: 'Unprocessed' });
-    }
-    await indexedDBAdapter.delete('ai_extractions', extractionId);
-    this.notifyDataChanged();
-    return true;
+    return this.aiRepo.rejectExtraction(extractionId);
   }
 
   async approveAndApplyExtraction(extractionId: string): Promise<boolean> {
@@ -690,7 +393,7 @@ class StoryRepository {
     }
 
     if (draft.chapterId) {
-      await this.updateChapter(draft.chapterId, { status: 'Analyzed' });
+      await this.chapterRepo.updateChapter(draft.chapterId, { status: 'Analyzed' });
     }
 
     await indexedDBAdapter.delete('ai_extractions', extractionId);

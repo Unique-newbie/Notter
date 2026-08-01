@@ -97,6 +97,7 @@ export interface Character {
   explicitAppearanceFacts?: string[];
   dynamicAttributes?: Record<string, string | number>;
   progressionHistory?: CharacterProgressionChange[];
+  notes?: string[];
 
   // Extended RPG & Physical Codex Attributes
   species?: string;
