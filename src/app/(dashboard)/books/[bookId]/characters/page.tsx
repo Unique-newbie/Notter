@@ -720,6 +720,7 @@ export default function CharactersPage() {
                 <div className="space-y-2">
                   {relationships
                     .filter(r => r.character1Name === selectedChar.name || r.character2Name === selectedChar.name)
+                    .filter(r => !dossierSearchQuery || r.character1Name.toLowerCase().includes(dossierSearchQuery.toLowerCase()) || r.character2Name.toLowerCase().includes(dossierSearchQuery.toLowerCase()) || r.relationType.toLowerCase().includes(dossierSearchQuery.toLowerCase()) || (r.description && r.description.toLowerCase().includes(dossierSearchQuery.toLowerCase())))
                     .map(r => (
                       <div key={r.id} className="p-3 rounded-xl bg-[#181820] border border-[#232334] flex items-center justify-between">
                         <div>
@@ -743,7 +744,9 @@ export default function CharactersPage() {
             {activeTab === 'inventory' && (
               <div className="space-y-3 text-xs">
                 <h3 className="font-bold text-white">Possessed Inventory &amp; Artifacts</h3>
-                {items.filter(i => i.ownerCharacterName === selectedChar.name).map(i => (
+                {items.filter(i => i.ownerCharacterName === selectedChar.name)
+                  .filter(i => !dossierSearchQuery || i.name.toLowerCase().includes(dossierSearchQuery.toLowerCase()) || (i.description && i.description.toLowerCase().includes(dossierSearchQuery.toLowerCase())))
+                  .map(i => (
                   <div key={i.id} className="p-3 rounded-xl bg-[#181820] border border-[#232334]">
                     <div className="font-bold text-white">{i.name}</div>
                     <div className="text-[#8e8ea0] mt-0.5">{i.description}</div>
@@ -756,7 +759,9 @@ export default function CharactersPage() {
             {activeTab === 'abilities' && (
               <div className="space-y-3 text-xs">
                 <h3 className="font-bold text-white">Abilities &amp; Skills</h3>
-                {abilities.filter(a => a.userCharacterNames.includes(selectedChar.name)).map(a => (
+                {abilities.filter(a => a.userCharacterNames.includes(selectedChar.name))
+                  .filter(a => !dossierSearchQuery || a.name.toLowerCase().includes(dossierSearchQuery.toLowerCase()) || (a.description && a.description.toLowerCase().includes(dossierSearchQuery.toLowerCase())))
+                  .map(a => (
                   <div key={a.id} className="p-3 rounded-xl bg-[#181820] border border-[#232334]">
                     <div className="font-bold text-white">{a.name}</div>
                     <div className="text-[#8e8ea0] mt-0.5">{a.description}</div>
@@ -769,7 +774,9 @@ export default function CharactersPage() {
             {activeTab === 'history' && (
               <div className="space-y-3 text-xs">
                 <h3 className="font-bold text-white">Story Timeline &amp; Appearances</h3>
-                {(selectedChar.chapterAppearances || []).map((app, idx) => (
+                {(selectedChar.chapterAppearances || [])
+                  .filter(app => !dossierSearchQuery || app.chapterTitle.toLowerCase().includes(dossierSearchQuery.toLowerCase()) || app.summary.toLowerCase().includes(dossierSearchQuery.toLowerCase()))
+                  .map((app, idx) => (
                   <div key={idx} className="p-3.5 rounded-xl bg-[#181820] border border-[#232334]">
                     <div className="font-bold text-white font-mono">Ch. {app.chapterNumber} — {app.chapterTitle}</div>
                     <div className="text-[#a1a1aa] mt-1">{app.summary}</div>
@@ -782,7 +789,9 @@ export default function CharactersPage() {
             {activeTab === 'dialogue' && (
               <div className="space-y-3 text-xs">
                 <h3 className="font-bold text-white">Dialogue Commitments &amp; Promises</h3>
-                {dialogueFacts.filter(d => d.speaker === selectedChar.name || d.recipient === selectedChar.name).map(df => (
+                {dialogueFacts.filter(d => d.speaker === selectedChar.name || d.recipient === selectedChar.name)
+                  .filter(d => !dossierSearchQuery || d.speaker.toLowerCase().includes(dossierSearchQuery.toLowerCase()) || (d.recipient?.toLowerCase() || '').includes(dossierSearchQuery.toLowerCase()) || d.fact.toLowerCase().includes(dossierSearchQuery.toLowerCase()))
+                  .map(df => (
                   <div key={df.id} className="p-3 rounded-xl bg-[#181820] border border-amber-500/20">
                     <div className="font-bold text-amber-300">{df.speaker} → {df.recipient}</div>
                     <div className="text-white font-mono mt-1">&quot;{df.fact}&quot;</div>
@@ -806,7 +815,9 @@ export default function CharactersPage() {
                     Add Note
                   </button>
                 </div>
-                {(selectedChar.authorNotes || []).map((n, idx) => (
+                {(selectedChar.authorNotes || [])
+                  .filter(n => !dossierSearchQuery || n.toLowerCase().includes(dossierSearchQuery.toLowerCase()))
+                  .map((n, idx) => (
                   <div key={idx} className="p-3 rounded-xl bg-[#181820] border border-[#232334] flex items-center justify-between">
                     <span className="text-white">{n}</span>
                     <button onClick={() => handleDeleteAuthorNote(idx)} className="text-red-400">
@@ -835,6 +846,90 @@ export default function CharactersPage() {
           onConfirmMerge={handleConfirmIntelligentMerge}
           onClose={() => setConflictModalOpen(false)}
         />
+      )}
+
+      {/* Create / Edit Character Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#121218] border border-[#232334] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
+            <div className="p-6 border-b border-[#232334] flex items-center justify-between sticky top-0 bg-[#121218] z-10">
+              <h2 className="text-xl font-extrabold text-white">
+                {editingChar ? 'Edit Character Codex' : 'Create New Character'}
+              </h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-2 rounded-lg text-[#8e8ea0] hover:text-white hover:bg-[#232334] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#8e8ea0] uppercase mb-1.5">Name *</label>
+                  <input
+                    type="text"
+                    value={charName}
+                    onChange={(e) => setCharName(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 rounded-xl bg-[#0c0c10] border border-[#232334] text-white text-sm focus:outline-none focus:border-[#7c3aed]"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-[#8e8ea0] uppercase mb-1.5">Aliases (comma separated)</label>
+                  <input
+                    type="text"
+                    value={charAliases}
+                    onChange={(e) => setCharAliases(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-[#0c0c10] border border-[#232334] text-white text-sm focus:outline-none focus:border-[#7c3aed]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#8e8ea0] uppercase mb-1.5">Summary</label>
+                  <textarea
+                    value={charSummary}
+                    onChange={(e) => setCharSummary(e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 rounded-xl bg-[#0c0c10] border border-[#232334] text-white text-sm focus:outline-none focus:border-[#7c3aed] resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#8e8ea0] uppercase mb-1.5">Status</label>
+                  <select
+                    value={charStatus}
+                    onChange={(e) => setCharStatus(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-[#0c0c10] border border-[#232334] text-white text-sm focus:outline-none focus:border-[#7c3aed]"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Deceased">Deceased</option>
+                    <option value="Missing">Missing</option>
+                    <option value="Unknown">Unknown</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-[#232334] flex items-center justify-end gap-3 sticky bottom-0 bg-[#121218] z-10">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="px-5 py-2 rounded-xl bg-transparent text-white text-sm font-bold border border-[#232334] hover:bg-[#232334] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveCharacter}
+                disabled={!charName.trim()}
+                className="px-5 py-2 rounded-xl bg-[#7c3aed] text-white text-sm font-bold shadow-purple hover:bg-[#6d28d9] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Save Character
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

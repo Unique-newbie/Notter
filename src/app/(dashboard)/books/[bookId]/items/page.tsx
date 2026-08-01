@@ -65,7 +65,7 @@ export default function ItemsPage() {
   };
 
   const handleConfirmMerge = async (primaryId: string, secondaryId: string, overrides: any) => {
-    const success = await repository.intelligentMergeItems(primaryId, secondaryId, overrides);
+    const success = await repository.intelligentMergeItems(bookId, primaryId, secondaryId);
     if (success) {
       showToast('Intelligent Item Merge Complete!');
       await loadItems();

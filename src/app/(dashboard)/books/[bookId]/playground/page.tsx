@@ -25,7 +25,8 @@ export default function ExtractionPlaygroundPage() {
           chapterText: sampleText,
           bookId,
           chapterNumber: 1,
-          testMode: true
+          testMode: true,
+          model
         })
       });
 

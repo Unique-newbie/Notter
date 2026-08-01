@@ -214,7 +214,7 @@ class StoryRepository {
   }
 
   async getCharacter(id: string): Promise<Character | undefined> {
-    return indexedDBAdapter.getById<Character>('chapters', id);
+    return indexedDBAdapter.getById<Character>('characters', id);
   }
 
   async createCharacter(

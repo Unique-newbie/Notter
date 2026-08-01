@@ -242,7 +242,7 @@ export default function CanonGraphPage() {
 
             <div className="pt-2">
               <Link
-                href={`/books/${bookId}/${selectedNode.type}s?id=${selectedNode.data.id}`}
+                href={`/books/${bookId}/${selectedNode.type === 'ability' ? 'abilities' : selectedNode.type + 's'}?id=${selectedNode.data.id}`}
                 className="block text-center w-full py-2.5 rounded-xl bg-[#7c3aed] text-white font-bold hover:bg-[#6d28d9] transition-all flex items-center justify-center gap-1.5"
               >
                 <Eye className="w-4 h-4" /> Open Full Profile →

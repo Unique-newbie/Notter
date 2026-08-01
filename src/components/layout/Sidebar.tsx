@@ -23,7 +23,6 @@ export function Sidebar({ collapsed, onToggleCollapse, activeBookId }: SidebarPr
     { label: 'Books', href: '/books', icon: BookOpen },
     { label: 'Writing Analytics', href: '/analytics', icon: Flame },
     { label: 'Settings & Keys', href: '/settings', icon: Settings },
-    { label: 'Feedback Center', href: '/feedback', icon: HelpCircle },
     { label: 'About & Diagnostics', href: '/about', icon: Info },
   ];
 

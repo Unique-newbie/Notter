@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search, BookOpen, Layers, Users, Shield, Package, MapPin, GitBranch,
-  Flame, Settings, User, Sparkles, Palette, HelpCircle, Info, ChevronRight, X
+  Flame, Settings, Sparkles, Palette, Info, ChevronRight, X
 } from 'lucide-react';
 import { useTheme, ThemeId } from '@/lib/theme/ThemeContext';
 
@@ -51,9 +51,7 @@ export function CommandPalette({
     { id: 'nav-locations', title: 'View Map & Locations', category: 'Navigation', icon: MapPin, perform: () => router.push(`/books/${activeBookId}/locations`) },
     { id: 'nav-timeline', title: 'View Visual Timeline', category: 'Navigation', icon: GitBranch, perform: () => router.push(`/books/${activeBookId}/timeline`) },
     { id: 'nav-[#analytics]', title: 'Open Writing Analytics & Heatmap', category: 'Navigation', icon: Flame, perform: () => router.push('/analytics') },
-    { id: 'nav-profile', title: 'User Profile & Preferences', category: 'Navigation', icon: User, perform: () => router.push('/profile') },
     { id: 'nav-settings', title: 'Settings & BYOK API Keys', category: 'Navigation', icon: Settings, perform: () => router.push('/settings') },
-    { id: 'nav-feedback', title: 'Feedback Center & Support', category: 'Navigation', icon: HelpCircle, perform: () => router.push('/feedback') },
     { id: 'nav-about', title: 'About Notter & Developer Diagnostics', category: 'Navigation', icon: Info, perform: () => router.push('/about') },
 
     // Actions

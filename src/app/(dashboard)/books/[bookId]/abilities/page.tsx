@@ -63,7 +63,7 @@ export default function AbilitiesPage() {
   };
 
   const handleConfirmMerge = async (primaryId: string, secondaryId: string, overrides: any) => {
-    const success = await repository.intelligentMergeAbilities(primaryId, secondaryId, overrides);
+    const success = await repository.intelligentMergeAbilities(bookId, primaryId, secondaryId);
     if (success) {
       showToast('Intelligent Ability Merge Complete!');
       await loadAbilities();

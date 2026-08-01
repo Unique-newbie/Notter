@@ -49,13 +49,13 @@ export default function DuplicateReviewCenterPage() {
   const handleConfirmMerge = async (primaryId: string, secondaryId: string, overrides: any) => {
     let success = false;
     if (mergeEntityType === 'character') {
-      success = await repository.intelligentMergeCharacters(primaryId, secondaryId, overrides);
+      success = await repository.intelligentMergeCharacters(bookId, primaryId, secondaryId, overrides);
     } else if (mergeEntityType === 'ability') {
-      success = await repository.intelligentMergeAbilities(primaryId, secondaryId, overrides);
+      success = await repository.intelligentMergeAbilities(bookId, primaryId, secondaryId);
     } else if (mergeEntityType === 'item') {
-      success = await repository.intelligentMergeItems(primaryId, secondaryId, overrides);
+      success = await repository.intelligentMergeItems(bookId, primaryId, secondaryId);
     } else if (mergeEntityType === 'location') {
-      success = await repository.intelligentMergeLocations(primaryId, secondaryId, overrides);
+      success = await repository.intelligentMergeLocations(bookId, primaryId, secondaryId);
     }
 
     if (success) {

@@ -63,7 +63,7 @@ export default function LocationsPage() {
   };
 
   const handleConfirmMerge = async (primaryId: string, secondaryId: string, overrides: any) => {
-    const success = await repository.intelligentMergeLocations(primaryId, secondaryId, overrides);
+    const success = await repository.intelligentMergeLocations(bookId, primaryId, secondaryId);
     if (success) {
       showToast('Intelligent Location Merge Complete!');
       await loadLocations();
