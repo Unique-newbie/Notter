@@ -55,6 +55,7 @@ class StoryRepository {
   async archiveBook(id: string): Promise<boolean> { return this.bookRepo.archiveBook(id); }
   async restoreBook(id: string): Promise<boolean> { return this.bookRepo.restoreBook(id); }
   async deleteBook(id: string): Promise<boolean> { return this.bookRepo.deleteBook(id); }
+  async purgeBookStoryBibleData(id: string): Promise<boolean> { return this.bookRepo.purgeBookStoryBibleData(id); }
 
   // ==================== CHAPTER METHODS ====================
   async getChapters(bookId: string): Promise<Chapter[]> { return this.chapterRepo.getChapters(bookId); }
@@ -62,6 +63,7 @@ class StoryRepository {
   async createChapter(bookId: string, title: string, content: string, chapterNumber?: number): Promise<Chapter | null> { return this.chapterRepo.createChapter(bookId, title, content, chapterNumber); }
   async updateChapter(id: string, updates: Partial<Chapter>): Promise<boolean> { return this.chapterRepo.updateChapter(id, updates); }
   async deleteChapter(id: string): Promise<boolean> { return this.chapterRepo.deleteChapter(id); }
+  async purgeChapterAnalysisData(id: string): Promise<boolean> { return this.chapterRepo.purgeChapterAnalysisData(id); }
 
   // ==================== CHARACTER METHODS ====================
   async getCharacters(bookId: string): Promise<Character[]> { return this.charRepo.getCharacters(bookId); }

@@ -352,6 +352,17 @@ ${content}
     }
   };
 
+  const handlePurgeChapterAnalysis = async () => {
+    if (!activeChapter) return;
+    if (confirm(`Purge analysis receipt for "${activeChapter.title}" and reset status to Unprocessed?`)) {
+      await repository.purgeChapterAnalysisData(activeChapter.id);
+      setActiveChapter(prev => prev ? { ...prev, status: 'Unprocessed' } : prev);
+      setSaveToast('Chapter analysis data purged.');
+      setTimeout(() => setSaveToast(''), 3000);
+      await refreshChapters(activeChapter.id);
+    }
+  };
+
   const currentWordCount = calculateWordCount(content);
   const currentReadingTime = calculateReadingTime(currentWordCount);
   const unprocessedCount = chapters.filter(c => c.status === 'Unprocessed' && c.content.trim().length > 0).length;
@@ -418,6 +429,7 @@ ${content}
             content={content}
             onRunAIAnalysis={() => handleRunAIAnalysis()}
             onOpenPendingReview={() => handleOpenPendingReview()}
+            onPurgeChapterAnalysis={handlePurgeChapterAnalysis}
           />
 
           {/* Text Area */}

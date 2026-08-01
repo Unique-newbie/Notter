@@ -99,6 +99,34 @@ export class ChapterRepository {
   }
 
   /**
+   * Purges analysis receipt and resets a single chapter's status back to Unprocessed.
+   * @param {string} id - The chapter ID.
+   * @returns {Promise<boolean>} True if successful.
+   */
+  async purgeChapterAnalysisData(id: string): Promise<boolean> {
+    const existing = await indexedDBAdapter.getById<Chapter>('chapters', id);
+    if (!existing) return false;
+
+    // Delete extraction receipts for this chapter
+    const extractions = await indexedDBAdapter.getAll<any>('ai_extractions');
+    for (const ext of extractions) {
+      if (ext.chapterId === id) {
+        await indexedDBAdapter.delete('ai_extractions', ext.id);
+      }
+    }
+
+    // Reset status to Unprocessed
+    await indexedDBAdapter.save('chapters', {
+      ...existing,
+      status: 'Unprocessed',
+      updatedAt: new Date().toISOString()
+    });
+
+    this.notifyDataChanged();
+    return true;
+  }
+
+  /**
    * Deletes a chapter by ID.
    * @param {string} id - The chapter ID.
    * @returns {Promise<boolean>} True if successful.

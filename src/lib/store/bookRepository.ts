@@ -135,6 +135,36 @@ export class BookRepository {
   }
 
   /**
+   * Purges all extracted Story Bible data (characters, items, abilities, locations, relationships, timeline, dialogue, extractions) for a book,
+   * while keeping written chapter texts intact and resetting chapter statuses to Unprocessed.
+   * @param {string} id - The book ID.
+   * @returns {Promise<boolean>} True if successful.
+   */
+  async purgeBookStoryBibleData(id: string): Promise<boolean> {
+    const storesToPurge = [
+      'characters', 'abilities', 'items',
+      'locations', 'organizations', 'relationships',
+      'dialogue_facts', 'timeline_events', 'ai_extractions'
+    ];
+
+    for (const storeName of storesToPurge) {
+      await indexedDBAdapter.deleteAllByBookId(storeName as any, id);
+    }
+
+    const chapters = await indexedDBAdapter.getAllByBookId<any>('chapters', id);
+    for (const chap of chapters) {
+      await indexedDBAdapter.save('chapters', {
+        ...chap,
+        status: 'Unprocessed',
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    this.notifyDataChanged();
+    return true;
+  }
+
+  /**
    * Deletes a book and all associated entities (cascade delete).
    * @param {string} id - The book ID.
    * @returns {Promise<boolean>} True if successful.

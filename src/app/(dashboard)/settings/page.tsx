@@ -567,6 +567,46 @@ export default function ConsolidatedSettingsPage() {
               <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
             </label>
           </div>
+
+          {/* Danger Zone: Story Bible Purge Options */}
+          <div className="p-5 rounded-xl bg-red-500/10 border border-red-500/30 space-y-4">
+            <h3 className="font-bold text-red-400 text-xs flex items-center gap-2">
+              <Trash2 className="w-4 h-4 text-red-400" /> Danger Zone: Story Bible Purge Options
+            </h3>
+            <p className="text-[#8e8ea0] text-[11px] leading-relaxed">
+              Purge all extracted Story Bible data (characters, abilities, items, locations, relationships, dialogue facts, and receipts) for a specific book while keeping all your written chapter texts 100% intact.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <select
+                value={selectedBookToExport}
+                onChange={(e) => setSelectedBookToExport(e.target.value)}
+                className="flex-1 bg-[#121218] border border-[#232334] rounded-xl px-3 py-2 text-white focus:outline-none"
+              >
+                <option value="">Select Novel to Reset Story Bible...</option>
+                {books.map(b => (
+                  <option key={b.id} value={b.id}>{b.title}</option>
+                ))}
+              </select>
+              <button
+                onClick={async () => {
+                  if (!selectedBookToExport) return;
+                  const targetBook = books.find(b => b.id === selectedBookToExport);
+                  const bookTitle = targetBook?.title || 'this book';
+
+                  if (confirm(`PURGE STORY BIBLE WARNING:\n\nThis will permanently delete all extracted characters, abilities, items, locations, relationships, timeline events, and dialogue facts for "${bookTitle}", and reset all chapters to Unprocessed.\n\nYour written chapter texts will NOT be deleted.\n\nProceed?`)) {
+                    await repository.purgeBookStoryBibleData(selectedBookToExport);
+                    showSuccess(`Story Bible data for "${bookTitle}" has been completely purged!`);
+                    loadBooksAndStats();
+                  }
+                }}
+                disabled={!selectedBookToExport}
+                className="px-4 py-2.5 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-lg"
+              >
+                <Trash2 className="w-4 h-4" /> Purge Story Bible for Selected Novel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

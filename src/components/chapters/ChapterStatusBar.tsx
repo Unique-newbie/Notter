@@ -14,6 +14,7 @@ export interface ChapterStatusBarProps {
   content: string;
   onRunAIAnalysis: () => void;
   onOpenPendingReview: () => void;
+  onPurgeChapterAnalysis?: () => void;
 }
 
 /**
@@ -28,6 +29,7 @@ export function ChapterStatusBar({
   content,
   onRunAIAnalysis,
   onOpenPendingReview,
+  onPurgeChapterAnalysis,
 }: ChapterStatusBarProps) {
   return (
     <div className="px-6 py-2 bg-[#09090b] border-b border-[#232334] flex flex-wrap items-center justify-between gap-3 text-xs text-[#8e8ea0]">
@@ -65,13 +67,13 @@ export function ChapterStatusBar({
         {activeChapter.status === 'Pending Review' && (
           <button
             onClick={onOpenPendingReview}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-500 hover:bg-amber-600 text-black font-extrabold text-[11px] transition-all shadow-lg animate-pulse"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-500 hover:bg-amber-600 text-black font-extrabold text-[11px] transition-all animate-pulse"
           >
             <CheckSquare className="w-3.5 h-3.5" /> Review &amp; Approve Now
           </button>
         )}
 
-        {/* View Receipt & Re-extract Buttons for Analyzed Chapters */}
+        {/* View Receipt, Re-extract, & Purge Buttons for Analyzed Chapters */}
         {activeChapter.status === 'Analyzed' && (
           <div className="flex items-center gap-2">
             <button
@@ -90,6 +92,16 @@ export function ChapterStatusBar({
             >
               <RotateCcw className="w-3.5 h-3.5" /> Re-extract
             </button>
+
+            {onPurgeChapterAnalysis && (
+              <button
+                onClick={onPurgeChapterAnalysis}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-bold text-[11px] transition-all"
+                title="Purge analysis receipt and reset chapter to Unprocessed"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Purge Chapter Analysis
+              </button>
+            )}
           </div>
         )}
       </div>
