@@ -1,4 +1,5 @@
 import React from 'react';
+import Script from 'next/script';
 import './globals.css';
 import type { Metadata } from 'next';
 
@@ -78,6 +79,21 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-TY42XXH50Q"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-TY42XXH50Q');
+          `}
+        </Script>
+      </head>
       <body className="bg-[#09090b] text-[#f4f4f5] antialiased">
         {children}
       </body>
