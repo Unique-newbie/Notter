@@ -102,6 +102,13 @@ class StoryRepository {
   }
 
   async createBook(book: Omit<Book, 'id' | 'createdAt' | 'updatedAt' | 'chapterCount' | 'totalWordCount'>): Promise<Book | null> {
+    // If coverUrl is a massive Base64 string (> 50KB), sanitize for DB payload
+    let safeCoverUrl = book.coverUrl;
+    if (safeCoverUrl && safeCoverUrl.startsWith('data:image/') && safeCoverUrl.length > 50000) {
+      // Keep Base64 locally, but do not send huge 500KB strings to DB columns that reject payload size
+      safeCoverUrl = safeCoverUrl.substring(0, 50000); 
+    }
+
     try {
       const { data: { user } } = await this.supabase.auth.getUser();
 
@@ -138,13 +145,13 @@ class StoryRepository {
           updatedAt: data.updated_at
         };
       } else {
-        console.warn('[Repository] Supabase insert failed, storing in local fallback:', error?.message);
+        console.warn('[Repository] Supabase insert failed, falling back to local storage:', error?.message);
       }
     } catch (err) {
-      console.warn('[Repository] createBook exception, storing in local fallback:', err);
+      console.warn('[Repository] createBook exception, falling back to local storage:', err);
     }
 
-    // Local Storage Fallback
+    // Resilient Local Storage Fallback (Guaranteed to NEVER crash)
     const localId = `book-local-${Date.now()}`;
     const newLocalBook: Book = {
       id: localId,
@@ -159,8 +166,17 @@ class StoryRepository {
     };
 
     if (typeof window !== 'undefined') {
-      const stored = JSON.parse(localStorage.getItem('notter_local_books') || '[]');
-      localStorage.setItem('notter_local_books', JSON.stringify([newLocalBook, ...stored]));
+      try {
+        const stored = JSON.parse(localStorage.getItem('notter_local_books') || '[]');
+        // Limit local stored cover url size to prevent QuotaExceededError
+        const sanitizedLocalBook = { ...newLocalBook };
+        if (sanitizedLocalBook.coverUrl && sanitizedLocalBook.coverUrl.length > 100000) {
+          delete sanitizedLocalBook.coverUrl;
+        }
+        localStorage.setItem('notter_local_books', JSON.stringify([sanitizedLocalBook, ...stored]));
+      } catch (e) {
+        console.warn('[Repository] QuotaExceededError caught gracefully:', e);
+      }
     }
 
     this.notifyDataChanged();

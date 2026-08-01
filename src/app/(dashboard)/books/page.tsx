@@ -101,36 +101,46 @@ export default function BooksPage() {
       return;
     }
 
-    if (editingBook) {
-      await repository.updateBook(editingBook.id, {
-        title: title.trim(),
-        description: description.trim(),
-        genre,
-        coverColor,
-        coverUrl,
-        status
-      });
-      setSuccessToast(`Updated "${title.trim()}"!`);
-    } else {
-      const newBook = await repository.createBook({
-        title: title.trim(),
-        description: description.trim(),
-        genre,
-        coverColor,
-        coverUrl,
-        status
-      });
-      if (newBook) {
-        setSuccessToast(`Created "${newBook.title}"! Redirecting to Story Bible...`);
-        setTimeout(() => {
-          window.location.href = `/books/${newBook.id}`;
-        }, 800);
+    try {
+      if (editingBook) {
+        await repository.updateBook(editingBook.id, {
+          title: title.trim(),
+          description: description.trim(),
+          genre,
+          coverColor,
+          coverUrl,
+          status
+        });
+        setSuccessToast(`Updated "${title.trim()}"!`);
+      } else {
+        const newBook = await repository.createBook({
+          title: title.trim(),
+          description: description.trim(),
+          genre,
+          coverColor,
+          coverUrl,
+          status
+        });
+        if (newBook) {
+          setSuccessToast(`Created "${newBook.title}"! Redirecting...`);
+          setIsCreateModalOpen(false);
+          resetForm();
+          await refreshBooks();
+          setTimeout(() => {
+            window.location.href = `/books/${newBook.id}`;
+          }, 300);
+          return;
+        }
       }
+    } catch (err: any) {
+      setValidationError(err?.message || 'Failed to save book.');
+      return;
     }
 
-    setTimeout(() => setSuccessToast(''), 3000);
+    setIsCreateModalOpen(false);
     resetForm();
     await refreshBooks();
+    setTimeout(() => setSuccessToast(''), 3000);
   };
 
   const handleDeleteBook = (id: string, bookTitle: string) => {
