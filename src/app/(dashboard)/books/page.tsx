@@ -121,7 +121,10 @@ export default function BooksPage() {
         status
       });
       if (newBook) {
-        setSuccessToast(`Created "${newBook.title}"!`);
+        setSuccessToast(`Created "${newBook.title}"! Redirecting to Story Bible...`);
+        setTimeout(() => {
+          window.location.href = `/books/${newBook.id}`;
+        }, 800);
       }
     }
 

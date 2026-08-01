@@ -107,6 +107,12 @@ export default function BookOverviewPage() {
           >
             <GitBranch className="w-4 h-4 text-[#a78bfa]" /> Visual Timeline
           </Link>
+          <Link
+            href={`/books/${bookId}/duplicates`}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold text-xs hover:bg-amber-500/20 transition-all"
+          >
+            Duplicate Review Center
+          </Link>
         </div>
       </div>
 
