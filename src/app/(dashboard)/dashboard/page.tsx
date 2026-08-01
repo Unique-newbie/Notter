@@ -102,7 +102,8 @@ export default function DashboardPage() {
       <AnnouncementBar />
 
       {/* Welcome Banner with Quick Continue Card */}
-      <div className="p-8 rounded-2xl bg-gradient-to-r from-[#121218] via-[#1a102f] to-[#121218] border border-[#7c3aed]/30 relative overflow-hidden shadow-purple flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+        <div className="relative z-10 w-full">
+        <div className="p-8 rounded-2xl bg-gradient-to-r from-[#121218] via-[#1a102f] to-[#121218] border border-[#7c3aed]/30 relative overflow-hidden shadow-purple flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
         <div className="relative z-10 max-w-2xl">
           <h1 className="text-3xl font-extrabold tracking-tight text-white">
             Welcome back to <span className="purple-gradient-text">Notter</span>
@@ -110,20 +111,25 @@ export default function DashboardPage() {
           <p className="text-sm text-[#a1a1aa] mt-2 leading-relaxed">
             Distraction-free novel drafting and automatic Story Bible entity extraction.
           </p>
+        </div>
 
-          <div className="flex items-center gap-4 mt-6">
-            <Link
-              href="/books"
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#7c3aed] text-white font-bold text-xs hover:bg-[#6d28d9] transition-all shadow-purple"
-            >
-              <BookOpen className="w-4 h-4" /> Manage Books
-            </Link>
-            <Link
-              href="/analytics"
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-extrabold text-xs hover:from-amber-600 hover:to-orange-700 transition-all shadow-xl"
-            >
-              <Flame className="w-4 h-4" /> Sprint Mode 2.0
-            </Link>
+          <div className="flex flex-col gap-4 w-full lg:w-auto">
+            <div>
+              <Link
+                href="/books"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#7c3aed] text-white font-bold text-xs hover:bg-[#6d28d9] transition-all shadow-purple"
+              >
+                <BookOpen className="w-4 h-4" /> Manage Books
+              </Link>
+            </div>
+            <div>
+              <Link
+                href="/analytics"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-extrabold text-xs hover:from-amber-600 hover:to-orange-700 transition-all shadow-xl"
+              >
+                <Flame className="w-4 h-4" /> Sprint Mode 2.0
+              </Link>
+            </div>
           </div>
         </div>
 
