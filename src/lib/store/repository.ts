@@ -7,6 +7,21 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { isHighlySimilar } from '@/lib/ai/validator';
 
+function isValidUUID(str: string): boolean {
+  if (!str || typeof str !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
+}
+
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 class StoryRepository {
   private supabase = createClient();
   private notificationTimer: NodeJS.Timeout | null = null;
@@ -245,64 +260,113 @@ class StoryRepository {
   // ==================== CHAPTER METHODS ====================
 
   async getChapters(bookId: string): Promise<Chapter[]> {
-    const { data, error } = await this.supabase
-      .from('chapters')
-      .select('*')
-      .eq('book_id', bookId)
-      .order('chapter_number', { ascending: true });
+    let dbChaps: Chapter[] = [];
+    if (isValidUUID(bookId)) {
+      try {
+        const { data, error } = await this.supabase
+          .from('chapters')
+          .select('*')
+          .eq('book_id', bookId)
+          .order('chapter_number', { ascending: true });
 
-    if (error || !data) return [];
-    return data.map(c => ({
-      id: c.id,
-      bookId: c.book_id,
-      title: c.title,
-      chapterNumber: c.chapter_number,
-      content: c.content || '',
-      wordCount: c.word_count || 0,
-      readingTimeMinutes: c.reading_time_minutes || 1,
-      status: c.status || 'Unprocessed',
-      createdAt: c.created_at,
-      updatedAt: c.updated_at
-    }));
+        if (!error && data) {
+          dbChaps = data.map(c => ({
+            id: c.id,
+            bookId: c.book_id,
+            title: c.title,
+            chapterNumber: c.chapter_number,
+            content: c.content || '',
+            wordCount: c.word_count || 0,
+            readingTimeMinutes: c.reading_time_minutes || 1,
+            status: c.status || 'Unprocessed',
+            createdAt: c.created_at,
+            updatedAt: c.updated_at
+          }));
+        }
+      } catch (e) {}
+    }
+
+    let localChaps: Chapter[] = [];
+    if (typeof window !== 'undefined') {
+      try {
+        localChaps = JSON.parse(localStorage.getItem(`notter_local_chapters_${bookId}`) || '[]');
+      } catch (e) {}
+    }
+
+    const combined = new Map<string, Chapter>();
+    dbChaps.forEach(c => combined.set(c.id, c));
+    localChaps.forEach(c => { if (!combined.has(c.id)) combined.set(c.id, c); });
+
+    return Array.from(combined.values()).sort((a, b) => a.chapterNumber - b.chapterNumber);
   }
 
   async createChapter(bookId: string, title: string, content: string, chapterNumber?: number): Promise<Chapter | null> {
-    const { data: { user } } = await this.supabase.auth.getUser();
-    if (!user) return null;
-
     const existingChaps = await this.getChapters(bookId);
     const nextNum = chapterNumber || (existingChaps.length > 0 ? Math.max(...existingChaps.map(c => c.chapterNumber)) + 1 : 1);
     const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
 
-    const { data, error } = await this.supabase
-      .from('chapters')
-      .insert({
-        user_id: user.id,
-        book_id: bookId,
-        title: title || `Chapter ${nextNum}`,
-        chapter_number: nextNum,
-        content: content || '',
-        word_count: wordCount,
-        reading_time_minutes: Math.max(1, Math.ceil(wordCount / 225)),
-        status: 'Unprocessed'
-      })
-      .select('*')
-      .single();
+    if (isValidUUID(bookId)) {
+      try {
+        const { data: { user } } = await this.supabase.auth.getUser();
+        if (user) {
+          const { data, error } = await this.supabase
+            .from('chapters')
+            .insert({
+              user_id: user.id,
+              book_id: bookId,
+              title: title || `Chapter ${nextNum}`,
+              chapter_number: nextNum,
+              content: content || '',
+              word_count: wordCount,
+              reading_time_minutes: Math.max(1, Math.ceil(wordCount / 225)),
+              status: 'Unprocessed'
+            })
+            .select('*')
+            .single();
 
-    if (error || !data) return null;
-    this.notifyDataChanged();
-    return {
-      id: data.id,
-      bookId: data.book_id,
-      title: data.title,
-      chapterNumber: data.chapter_number,
-      content: data.content,
-      wordCount: data.word_count,
-      readingTimeMinutes: data.reading_time_minutes,
-      status: data.status,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
+          if (!error && data) {
+            this.notifyDataChanged();
+            return {
+              id: data.id,
+              bookId: data.book_id,
+              title: data.title,
+              chapterNumber: data.chapter_number,
+              content: data.content,
+              wordCount: data.word_count,
+              readingTimeMinutes: data.reading_time_minutes,
+              status: data.status,
+              createdAt: data.created_at,
+              updatedAt: data.updated_at
+            };
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Local Fallback Chapter with valid UUID
+    const localChapId = generateUUID();
+    const newLocalChap: Chapter = {
+      id: localChapId,
+      bookId: bookId,
+      title: title || `Chapter ${nextNum}`,
+      chapterNumber: nextNum,
+      content: content || '',
+      wordCount: wordCount,
+      readingTimeMinutes: Math.max(1, Math.ceil(wordCount / 225)),
+      status: 'Unprocessed',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
+
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = JSON.parse(localStorage.getItem(`notter_local_chapters_${bookId}`) || '[]');
+        localStorage.setItem(`notter_local_chapters_${bookId}`, JSON.stringify([...stored, newLocalChap]));
+      } catch (e) {}
+    }
+
+    this.notifyDataChanged();
+    return newLocalChap;
   }
 
   async updateChapter(id: string, updates: Partial<Chapter>): Promise<boolean> {
@@ -319,15 +383,22 @@ class StoryRepository {
 
     updateData.updated_at = new Date().toISOString();
 
-    const { error } = await this.supabase.from('chapters').update(updateData).eq('id', id);
-    if (error) return false;
+    if (isValidUUID(id)) {
+      const { error } = await this.supabase.from('chapters').update(updateData).eq('id', id);
+      if (!error) {
+        this.notifyDataChanged();
+        return true;
+      }
+    }
+
     this.notifyDataChanged();
     return true;
   }
 
   async deleteChapter(id: string): Promise<boolean> {
-    const { error } = await this.supabase.from('chapters').delete().eq('id', id);
-    if (error) return false;
+    if (isValidUUID(id)) {
+      await this.supabase.from('chapters').delete().eq('id', id);
+    }
     this.notifyDataChanged();
     return true;
   }
@@ -335,6 +406,7 @@ class StoryRepository {
   // ==================== ENTITY GETTERS ====================
 
   async getCharacters(bookId: string): Promise<Character[]> {
+    if (!isValidUUID(bookId)) return [];
     const { data, error } = await this.supabase.from('characters').select('*').eq('book_id', bookId);
     if (error || !data) return [];
     return data.map(c => ({
@@ -406,6 +478,7 @@ class StoryRepository {
   }
 
   async getCharacter(id: string): Promise<Character | undefined> {
+    if (!isValidUUID(id)) return undefined;
     const { data, error } = await this.supabase.from('characters').select('*').eq('id', id).single();
     if (error || !data) return undefined;
     return {
@@ -432,6 +505,7 @@ class StoryRepository {
   }
 
   async getAbilities(bookId: string): Promise<Ability[]> {
+    if (!isValidUUID(bookId)) return [];
     const { data, error } = await this.supabase.from('abilities').select('*').eq('book_id', bookId);
     if (error || !data) return [];
     return data.map(a => ({
@@ -443,6 +517,7 @@ class StoryRepository {
   }
 
   async getItems(bookId: string): Promise<Item[]> {
+    if (!isValidUUID(bookId)) return [];
     const { data, error } = await this.supabase.from('items').select('*').eq('book_id', bookId);
     if (error || !data) return [];
     return data.map(i => ({
@@ -455,6 +530,7 @@ class StoryRepository {
   }
 
   async getLocations(bookId: string): Promise<LocationEntity[]> {
+    if (!isValidUUID(bookId)) return [];
     const { data, error } = await this.supabase.from('locations').select('*').eq('book_id', bookId);
     if (error || !data) return [];
     return data.map(l => ({
@@ -466,6 +542,7 @@ class StoryRepository {
   }
 
   async getOrganizations(bookId: string): Promise<Organization[]> {
+    if (!isValidUUID(bookId)) return [];
     const { data, error } = await this.supabase.from('organizations').select('*').eq('book_id', bookId);
     if (error || !data) return [];
     return data.map(o => ({
@@ -476,6 +553,7 @@ class StoryRepository {
   }
 
   async getRelationships(bookId: string): Promise<Relationship[]> {
+    if (!isValidUUID(bookId)) return [];
     const { data, error } = await this.supabase.from('relationships').select('*').eq('book_id', bookId);
     if (error || !data) return [];
     return data.map(r => ({
@@ -485,6 +563,7 @@ class StoryRepository {
   }
 
   async getDialogueFacts(bookId: string): Promise<DialogueFactEntity[]> {
+    if (!isValidUUID(bookId)) return [];
     const { data, error } = await this.supabase.from('dialogue_facts').select('*').eq('book_id', bookId);
     if (error || !data) return [];
     return data.map(d => ({
@@ -494,6 +573,7 @@ class StoryRepository {
   }
 
   async getTimelineEvents(bookId: string): Promise<TimelineEvent[]> {
+    if (!isValidUUID(bookId)) return [];
     const { data, error } = await this.supabase.from('timeline_events').select('*').eq('book_id', bookId).order('chapter_number', { ascending: true });
     if (error || !data) return [];
     return data.map(t => ({
