@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, LayoutDashboard, Settings, Sparkles, ChevronLeft, ChevronRight, ShieldAlert, GitBranch, Layers, LogOut, Users, Package, MapPin, Shield, User, Flame, HelpCircle, Info, Merge, Eye } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Settings, Sparkles, ChevronLeft, ChevronRight, ShieldAlert, GitBranch, Layers, Users, Package, MapPin, Shield, Flame, HelpCircle, Info, Merge, Eye, HardDrive } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/lib/auth/AuthContext';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -16,7 +15,6 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggleCollapse, activeBookId }: SidebarProps) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
 
   const currentBookId = activeBookId || 'book-1';
 
@@ -24,8 +22,6 @@ export function Sidebar({ collapsed, onToggleCollapse, activeBookId }: SidebarPr
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Books', href: '/books', icon: BookOpen },
     { label: 'Writing Analytics', href: '/analytics', icon: Flame },
-    { label: 'Community Hub', href: '/community', icon: Users },
-    { label: 'Profile & Themes', href: '/profile', icon: User },
     { label: 'Settings & Keys', href: '/settings', icon: Settings },
     { label: 'Feedback Center', href: '/feedback', icon: HelpCircle },
     { label: 'About & Diagnostics', href: '/about', icon: Info },
@@ -151,19 +147,11 @@ export function Sidebar({ collapsed, onToggleCollapse, activeBookId }: SidebarPr
         )}
       </div>
 
-      {/* Footer Info & Logout */}
+      {/* Footer Info */}
       {!collapsed && (
-        <div className="p-3 border-t border-[#232334] bg-[#09090b] text-[11px] text-[#8e8ea0] flex items-center justify-between">
-          <div className="truncate max-w-[140px] text-white font-medium">
-            {user?.email || 'Logged in'}
-          </div>
-          <button
-            onClick={logout}
-            className="p-1 text-[#8e8ea0] hover:text-red-400 transition-colors"
-            title="Sign Out"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+        <div className="p-3 border-t border-[#232334] bg-[#09090b] text-[11px] text-[#8e8ea0] flex items-center gap-2">
+          <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="font-medium text-emerald-400">100% Offline Workspace</span>
         </div>
       )}
     </aside>

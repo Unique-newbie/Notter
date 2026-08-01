@@ -115,9 +115,9 @@ export function Header({ activeBookId = 'book-1', onSelectBook }: HeaderProps) {
           </div>
 
           <a
-            href="/profile"
+            href="/settings"
             className="w-8 h-8 rounded-full bg-[#1e1e2a] border border-[#232334] flex items-center justify-center text-[#a1a1aa] hover:border-[#7c3aed] transition-colors"
-            title="Profile & Preferences"
+            title="Settings & Preferences"
           >
             <User className="w-4 h-4" />
           </a>

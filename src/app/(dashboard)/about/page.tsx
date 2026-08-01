@@ -1,21 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Info, Code2, Database, HardDrive, Terminal, ShieldCheck, CheckCircle2, Sparkles, ExternalLink } from 'lucide-react';
-import { useAuth } from '@/lib/auth/AuthContext';
+import { Code2, HardDrive, Terminal, ShieldCheck, CheckCircle2, Sparkles } from 'lucide-react';
 
 export default function AboutPage() {
-  const { user } = useAuth();
   const [devMode, setDevMode] = useState(false);
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-12">
+    <div className="space-y-8 max-w-5xl mx-auto pb-12 select-none">
       
       {/* App Header Banner */}
       <div className="p-8 rounded-2xl bg-gradient-to-r from-[#121218] via-[#1a102f] to-[#121218] border border-[#7c3aed]/40 shadow-purple flex items-center justify-between">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7c3aed]/20 border border-[#7c3aed]/40 text-[#a78bfa] text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5" /> Notter Release v2.2.0
+            <Sparkles className="w-3.5 h-3.5" /> Notter Release v2.2.0 (Offline First)
           </div>
           <h1 className="text-3xl font-extrabold text-white">Notter – Fiction Knowledge Engine</h1>
           <p className="text-xs text-[#a1a1aa] max-w-xl leading-relaxed">
@@ -38,16 +36,16 @@ export default function AboutPage() {
               <strong className="text-white font-mono">Next.js 16 (Turbopack)</strong>
             </li>
             <li className="flex items-center justify-between">
-              <span>Backend &amp; Auth</span>
-              <strong className="text-white font-mono">Supabase PostgreSQL</strong>
+              <span>Local Storage</span>
+              <strong className="text-emerald-400 font-mono">Native IndexedDB Engine</strong>
             </li>
             <li className="flex items-center justify-between">
               <span>Image Compression</span>
-              <strong className="text-white font-mono">HTML5 Canvas WebP &amp; AVIF</strong>
+              <strong className="text-white font-mono">Canvas WebP Blobs</strong>
             </li>
             <li className="flex items-center justify-between">
               <span>Theme Engine</span>
-              <strong className="text-white font-mono">9 CSS Dynamic Variable Tokens</strong>
+              <strong className="text-white font-mono">9 Dynamic CSS Variable Tokens</strong>
             </li>
             <li className="flex items-center justify-between">
               <span>License</span>
@@ -64,7 +62,7 @@ export default function AboutPage() {
             &ldquo;AI extracts. Notter organizes. The author writes.&rdquo;
           </blockquote>
           <p className="text-[#8e8ea0] leading-relaxed">
-            Notter never generates or continues prose on your behalf. Sprint Mode and full-screen writing pads are sacred environments designed for raw human creativity.
+            Notter is 100% Offline-First. Your manuscript, characters, and plot notes remain strictly private inside your browser.
           </p>
         </div>
       </div>
@@ -76,7 +74,7 @@ export default function AboutPage() {
             <h2 className="font-bold text-white text-sm flex items-center gap-2">
               <Terminal className="w-4 h-4 text-amber-400" /> Developer Diagnostics Mode
             </h2>
-            <p className="text-[11px] text-[#8e8ea0] mt-0.5">Inspect system connection states, User ID, and database status.</p>
+            <p className="text-[11px] text-[#8e8ea0] mt-0.5">Inspect system connection states and database status.</p>
           </div>
 
           <button
@@ -92,23 +90,15 @@ export default function AboutPage() {
         {devMode && (
           <div className="p-4 rounded-xl bg-[#0c0c10] border border-amber-500/30 space-y-3 font-mono text-[11px] text-[#a1a1aa] animate-in fade-in">
             <div className="flex items-center justify-between border-b border-[#232334] pb-2">
-              <span>User ID:</span>
-              <span className="text-amber-300 font-bold">{user?.id || 'offline-guest-mode'}</span>
-            </div>
-            <div className="flex items-center justify-between border-b border-[#232334] pb-2">
-              <span>Email:</span>
-              <span className="text-white font-bold">{user?.email || 'author@notter.app'}</span>
-            </div>
-            <div className="flex items-center justify-between border-b border-[#232334] pb-2">
-              <span>Database Connection:</span>
+              <span>IndexedDB Status:</span>
               <span className="text-emerald-400 font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Supabase Connected
+                <CheckCircle2 className="w-3.5 h-3.5" /> IndexedDB Active (12 Object Stores)
               </span>
             </div>
             <div className="flex items-center justify-between border-b border-[#232334] pb-2">
-              <span>Storage Buckets:</span>
+              <span>Blob Storage:</span>
               <span className="text-emerald-400 font-bold flex items-center gap-1">
-                <HardDrive className="w-3.5 h-3.5" /> covers / avatars Active
+                <HardDrive className="w-3.5 h-3.5" /> WebP Blobs Healthy
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -118,7 +108,6 @@ export default function AboutPage() {
           </div>
         )}
       </div>
-
     </div>
   );
 }

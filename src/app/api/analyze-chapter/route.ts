@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractViaProvider } from '@/lib/ai/providers/unifiedProviderEngine';
 import { ExistingEntitiesContext } from '@/lib/ai/validator';
-import { createClient } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,32 +33,6 @@ export async function POST(req: NextRequest) {
     let model = clientModel || 'gemini-1.5-flash';
     let baseUrl = clientBaseUrl;
 
-    // If client didn't supply key, fetch active default BYOK key from Supabase for logged-in user
-    if (!apiKey) {
-      try {
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (user) {
-          const { data: keyRecord } = await supabase
-            .from('user_api_keys')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('is_default', true)
-            .single();
-
-          if (keyRecord) {
-            providerId = keyRecord.provider_id;
-            apiKey = keyRecord.api_key_encrypted;
-            model = keyRecord.default_model;
-            baseUrl = keyRecord.base_url;
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to load user BYOK key from Supabase:', err);
-      }
-    }
-
     if (!apiKey && providerId !== 'ollama' && providerId !== 'lmstudio') {
       return NextResponse.json({
         error: 'No API Key configured. Please configure an API Key under Settings or provide one in your request.'
@@ -78,12 +51,10 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ extraction: result.extraction, source: result.source });
-
   } catch (error: any) {
-    console.error("AI Extraction Error:", error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to extract chapter information' },
-      { status: 500 }
-    );
+    console.error('[API analyze-chapter] Exception:', error);
+    return NextResponse.json({
+      error: error.message || 'Internal AI Extraction Error'
+    }, { status: 500 });
   }
 }

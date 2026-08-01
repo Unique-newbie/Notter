@@ -1,6 +1,6 @@
 {
-  "name": "story-bible-ai",
-  "version": "0.1.0",
+  "name": "notter-fiction-engine",
+  "version": "2.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
@@ -10,8 +10,6 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
-    "@supabase/ssr": "^0.5.2",
-    "@supabase/supabase-js": "^2.49.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.4.7",
     "lucide-react": "^0.475.0",

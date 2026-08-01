@@ -1,11 +1,10 @@
 import React from 'react';
 import './globals.css';
 import type { Metadata } from 'next';
-import { AuthProvider } from '@/lib/auth/AuthContext';
 
 export const metadata: Metadata = {
-  title: 'Notter - Fiction Knowledge Management Platform',
-  description: 'Organize novels and extract structured notes using AI with author approval.',
+  title: 'Notter - Offline-First Novel Knowledge Platform',
+  description: 'Organize novels and extract structured notes locally using AI with author approval.',
 };
 
 export default function RootLayout({
@@ -16,9 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="bg-[#09090b] text-[#f4f4f5] antialiased">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        {children}
       </body>
     </html>
   );
