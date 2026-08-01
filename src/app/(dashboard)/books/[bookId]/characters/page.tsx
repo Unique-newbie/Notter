@@ -12,6 +12,8 @@ import { MergeConflictModal } from '@/components/character/MergeConflictModal';
 import { CharacterCodexTabs } from '@/components/character/CharacterCodexTabs';
 import { CharacterModal } from '@/components/character/CharacterModal';
 import { CharacterListSidebar } from '@/components/character/CharacterListSidebar';
+import { CharacterCodexHeader } from '@/components/character/CharacterCodexHeader';
+import { DuplicateDetectionAlert } from '@/components/character/DuplicateDetectionAlert';
 
 import { useCharacters } from './useCharacters';
 
@@ -139,34 +141,10 @@ export default function CharactersPage() {
       )}
 
       {/* Duplicate Detection Alert Banner */}
-      {duplicates.length > 0 && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 space-y-2">
-          <div className="flex items-center gap-2 font-bold text-xs">
-            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>Automatic Duplicate Character Suggestions ({duplicates.length} detected)</span>
-          </div>
-          <div className="space-y-2 pt-1">
-            {duplicates.map((dup, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-[#121218] border border-[#232334] text-xs">
-                <div>
-                  <span className="font-bold text-white">&quot;{dup.char1.name}&quot;</span>
-                  <span className="text-[#8e8ea0] mx-2">matches</span>
-                  <span className="font-bold text-white">&quot;{dup.char2.name}&quot;</span>
-                  <span className="ml-2 px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 font-mono font-bold">
-                    {dup.confidence}% similarity
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleInitiateMerge(dup.char1, dup.char2)}
-                  className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700 text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg"
-                >
-                  <Merge className="w-3.5 h-3.5" /> Intelligent Merge
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <DuplicateDetectionAlert
+        duplicates={duplicates}
+        handleInitiateMerge={handleInitiateMerge}
+      />
 
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -203,76 +181,15 @@ export default function CharactersPage() {
         {selectedChar ? (
           <div className="lg:col-span-2 p-6 rounded-2xl bg-[#121218] border border-[#232334] space-y-6">
             
-            {/* Header & Quick Merge Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#232334] pb-4">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7c3aed]/30 to-[#1e1e2a] border border-[#7c3aed]/40 flex items-center justify-center text-white font-extrabold text-xl shadow-purple">
-                  {selectedChar.name.substring(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-extrabold text-white">{selectedChar.name}</h2>
-                    {selectedChar.level && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                        Level {selectedChar.level} {selectedChar.className || ''}
-                      </span>
-                    )}
-                  </div>
-                  {selectedChar.aliases && selectedChar.aliases.length > 0 && (
-                    <p className="text-xs text-[#8e8ea0] mt-0.5 font-mono">
-                      Aliases: {selectedChar.aliases.join(', ')}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => openEditProfileModal(selectedChar)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border bg-[#181820] text-[#a78bfa] border-[#232334] hover:border-[#7c3aed]/50 transition-all"
-                >
-                  <FileText className="w-3.5 h-3.5" /> Edit Codex
-                </button>
-
-                {/* Intelligent Merge Select */}
-                <div className="relative">
-                  <button
-                    onClick={() => setMergeDropdownOpen(!mergeDropdownOpen)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border bg-[#181820] text-amber-400 border-amber-500/30 hover:bg-amber-500/10 transition-all"
-                  >
-                    <Merge className="w-3.5 h-3.5" /> Merge <ChevronDown className="w-3 h-3" />
-                  </button>
-
-                  {mergeDropdownOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-64 rounded-xl bg-[#0c0c10] border border-[#232334] p-2 shadow-2xl z-50 space-y-1">
-                      <div className="text-[10px] font-bold uppercase text-[#8e8ea0] px-2 py-1">Select Duplicate to Merge Into &quot;{selectedChar.name}&quot;</div>
-                      {mergeCandidates.map(c => (
-                        <button
-                          key={c.id}
-                          onClick={() => {
-                            setMergeDropdownOpen(false);
-                            handleInitiateMerge(selectedChar, c);
-                          }}
-                          className="w-full text-left px-3 py-2 rounded-lg text-xs hover:bg-[#181820] text-white"
-                        >
-                          <div className="font-bold">{c.name}</div>
-                          <div className="text-[10px] text-[#8e8ea0] line-clamp-1">{c.summary}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  onClick={handleDelete}
-                  className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 border border-[#232334]"
-                  title="Delete Character"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+            <CharacterCodexHeader
+              selectedChar={selectedChar}
+              openEditProfileModal={openEditProfileModal}
+              mergeDropdownOpen={mergeDropdownOpen}
+              setMergeDropdownOpen={setMergeDropdownOpen}
+              mergeCandidates={mergeCandidates}
+              handleInitiateMerge={handleInitiateMerge}
+              handleDelete={handleDelete}
+            />
 
             <CharacterCodexTabs
               activeTab={activeTab}
