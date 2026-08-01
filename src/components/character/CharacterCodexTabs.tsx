@@ -276,6 +276,67 @@ export function CharacterCodexTabs(props: CharacterCodexTabsProps) {
         </div>
       )}
 
+      {/* Tab: Story Timeline */}
+      {activeTab === 'history' && (
+        <div className="space-y-4 text-xs">
+          <h3 className="font-bold text-white flex items-center gap-2">
+            <History className="w-4 h-4 text-[#7c3aed]" /> Character Chapter Progression &amp; Timeline
+          </h3>
+
+          {/* Chapter Progression History Stream */}
+          {selectedChar.progressionHistory && selectedChar.progressionHistory.length > 0 ? (
+            <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] space-y-3">
+              <h4 className="font-bold text-[#a78bfa] uppercase tracking-wider text-[10px]">
+                Chapter Milestone Events
+              </h4>
+              <div className="space-y-2 relative border-l-2 border-[#7c3aed]/40 pl-4 ml-2">
+                {selectedChar.progressionHistory.map((p, idx) => (
+                  <div key={idx} className="relative p-3 rounded-lg bg-[#121218] border border-[#232334] font-mono text-xs">
+                    <div className="absolute -left-[23px] top-3.5 w-2.5 h-2.5 rounded-full bg-[#7c3aed]" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#a78bfa] font-bold">Chapter {p.chapterNumber}</span>
+                      {p.attribute && <span className="text-white font-bold">{p.attribute}</span>}
+                    </div>
+                    {(p.oldValue || p.newValue) && (
+                      <div className="text-amber-400 text-[11px] mt-1 font-bold">
+                        {p.oldValue ? `${p.oldValue} → ` : ''}{p.newValue}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 text-center text-[#8e8ea0] italic bg-[#181820] rounded-xl border border-[#232334]">
+              No chapter progression timeline recorded for {selectedChar.name}.
+            </div>
+          )}
+
+          {/* Dialogue Facts for this Character */}
+          {dialogueFacts && dialogueFacts.filter(df => df.speaker === selectedChar.name || df.recipient === selectedChar.name).length > 0 && (
+            <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] space-y-3">
+              <h4 className="font-bold text-amber-400 uppercase tracking-wider text-[10px]">
+                Recorded Dialogue Commitments &amp; Statements
+              </h4>
+              <div className="space-y-2">
+                {dialogueFacts.filter(df => df.speaker === selectedChar.name || df.recipient === selectedChar.name).map((df, idx) => (
+                  <div key={idx} className="p-3 rounded-lg bg-[#121218] border border-[#232334] flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-bold text-white">{df.speaker}</span>
+                      {df.recipient && <span className="text-[#8e8ea0]"> → {df.recipient}</span>}
+                      <p className="text-[#a1a1aa] text-[11px] mt-0.5">"{df.fact}"</p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-[#7c3aed]/20 text-[#a78bfa]">
+                      Ch {df.chapterNumber} • {df.type}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tab 4: Relationships */}
       {activeTab === 'relationships' && (
         <div className="space-y-3 text-xs">

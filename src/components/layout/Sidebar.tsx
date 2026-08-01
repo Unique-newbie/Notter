@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, LayoutDashboard, Settings, Sparkles, ChevronLeft, ChevronRight, ShieldAlert, GitBranch, Layers, Users, Package, MapPin, Shield, Flame, HelpCircle, Info, Merge, Eye, HardDrive } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Settings, Sparkles, ChevronLeft, ChevronRight, ShieldAlert, GitBranch, Layers, Users, Package, MapPin, Shield, Flame, HelpCircle, Info, Merge, Eye, HardDrive, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -34,6 +34,7 @@ export function Sidebar({ collapsed, onToggleCollapse, activeBookId }: SidebarPr
     { label: 'Items & Relics', href: `/books/${currentBookId}/items`, icon: Package },
     { label: 'Locations', href: `/books/${currentBookId}/locations`, icon: MapPin },
     { label: 'Interactive Graph', href: `/books/${currentBookId}/graph`, icon: GitBranch },
+    { label: 'Story Timeline', href: `/books/${currentBookId}/timeline`, icon: Clock },
     { label: 'AI Playground', href: `/books/${currentBookId}/playground`, icon: Sparkles },
     { label: 'Manuscript Reader', href: `/books/${currentBookId}/read`, icon: Eye },
     { label: 'Consistency Audit', href: `/books/${currentBookId}/audit`, icon: ShieldAlert },
