@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { repository } from '@/lib/store/repository';
 import { Character, Ability, Item, LocationEntity, Relationship } from '@/types';
-import { GitBranch, Users, Shield, Package, MapPin, Sparkles, Filter, ZoomIn, ZoomOut, RotateCcw, Eye, Network } from 'lucide-react';
+import { GitBranch, Users, Shield, Package, MapPin, Sparkles, Filter, ZoomIn, ZoomOut, RotateCcw, Eye, Network, Search } from 'lucide-react';
 import Link from 'next/link';
 
 interface MindNode {
@@ -35,6 +35,7 @@ export default function CanonGraphPage() {
   const [relationships, setRelationships] = useState<Relationship[]>([]);
   const [selectedNode, setSelectedNode] = useState<MindNode | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Filters & Zoom State
   const [showChars, setShowChars] = useState(true);
@@ -42,6 +43,11 @@ export default function CanonGraphPage() {
   const [showItems, setShowItems] = useState(true);
   const [showLocations, setShowLocations] = useState(true);
   const [zoomScale, setZoomScale] = useState(1);
+
+  // Pan State
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     async function loadData() {
@@ -62,62 +68,121 @@ export default function CanonGraphPage() {
     loadData();
   }, [bookId]);
 
-  const handleZoomIn = () => setZoomScale(z => Math.min(1.8, z + 0.15));
-  const handleZoomOut = () => setZoomScale(z => Math.max(0.5, z - 0.15));
-  const handleResetZoom = () => setZoomScale(1);
+  const handleZoomIn = () => setZoomScale(z => Math.min(2.0, z + 0.15));
+  const handleZoomOut = () => setZoomScale(z => Math.max(0.4, z - 0.15));
+  const handleResetZoom = () => {
+    setZoomScale(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
 
-  // Calculate Mind Map Radial / Cluster Layout
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).tagName === 'svg' || (e.target as HTMLElement).id === 'graph-bg') {
+      setIsDragging(true);
+      dragStartRef.current = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) {
+      setPanOffset({
+        x: e.clientX - dragStartRef.current.x,
+        y: e.clientY - dragStartRef.current.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  // Calculate Collision-Free Mind Map Layout
   const { nodes, edges } = useMemo(() => {
     const nodeList: MindNode[] = [];
     const edgeList: MindEdge[] = [];
 
-    const charNodes: MindNode[] = showChars ? characters.map(c => ({ id: `char-${c.id}`, name: c.name, type: 'character', data: c, x: 0, y: 0 })) : [];
-    const abilityNodes: MindNode[] = showAbilities ? abilities.map(a => ({ id: `abi-${a.id}`, name: a.name, type: 'ability', data: a, x: 0, y: 0 })) : [];
-    const itemNodes: MindNode[] = showItems ? items.map(i => ({ id: `item-${i.id}`, name: i.name, type: 'item', data: i, x: 0, y: 0 })) : [];
-    const locNodes: MindNode[] = showLocations ? locations.map(l => ({ id: `loc-${l.id}`, name: l.name, type: 'location', data: l, x: 0, y: 0 })) : [];
+    const query = searchQuery.toLowerCase().trim();
+
+    const charNodes: MindNode[] = showChars
+      ? characters.filter(c => !query || c.name.toLowerCase().includes(query))
+          .map(c => ({ id: `char-${c.id}`, name: c.name, type: 'character', data: c, x: 0, y: 0 }))
+      : [];
+
+    const abilityNodes: MindNode[] = showAbilities
+      ? abilities.filter(a => !query || a.name.toLowerCase().includes(query))
+          .map(a => ({ id: `abi-${a.id}`, name: a.name, type: 'ability', data: a, x: 0, y: 0 }))
+      : [];
+
+    const itemNodes: MindNode[] = showItems
+      ? items.filter(i => !query || i.name.toLowerCase().includes(query))
+          .map(i => ({ id: `item-${i.id}`, name: i.name, type: 'item', data: i, x: 0, y: 0 }))
+      : [];
+
+    const locNodes: MindNode[] = showLocations
+      ? locations.filter(l => !query || l.name.toLowerCase().includes(query))
+          .map(l => ({ id: `loc-${l.id}`, name: l.name, type: 'location', data: l, x: 0, y: 0 }))
+      : [];
 
     const allNodes = [...charNodes, ...abilityNodes, ...itemNodes, ...locNodes];
     if (allNodes.length === 0) return { nodes: [], edges: [] };
 
-    // Canvas Center
-    const cx = 500;
-    const cy = 350;
+    // Canvas Center Dimensions (Spacious 1600x1200 Coordinate Space)
+    const cx = 800;
+    const cy = 600;
 
-    // Distribute Character Nodes in Inner Ring
+    // 1. Initial Radial Ring Positions
     const totalChars = charNodes.length || 1;
     charNodes.forEach((node, idx) => {
       const angle = (idx / totalChars) * 2 * Math.PI - Math.PI / 2;
-      const radius = totalChars > 5 ? 180 : 130;
+      const radius = Math.max(180, totalChars * 32);
       node.x = cx + radius * Math.cos(angle);
       node.y = cy + radius * Math.sin(angle);
     });
 
-    // Distribute Ability / Item / Location Nodes in Outer Cluster Rings around connected Characters
-    const nonChars = [...abilityNodes, ...itemNodes, ...locNodes];
-    nonChars.forEach((node, idx) => {
-      // Find connected character if any
-      let parentCharNode: MindNode | undefined;
-
-      if (node.type === 'ability') {
-        const userNames = node.data.userCharacterNames || [];
-        parentCharNode = charNodes.find(cn => userNames.includes(cn.name));
-      } else if (node.type === 'item') {
-        parentCharNode = charNodes.find(cn => cn.name === node.data.ownerCharacterName);
-      } else if (node.type === 'location') {
-        parentCharNode = charNodes.find(cn => cn.data.currentLocation === node.name);
-      }
-
-      if (parentCharNode) {
-        const offsetAngle = ((idx % 6) / 6) * 2 * Math.PI;
-        node.x = parentCharNode.x + 110 * Math.cos(offsetAngle);
-        node.y = parentCharNode.y + 110 * Math.sin(offsetAngle);
-      } else {
-        const angle = (idx / nonChars.length) * 2 * Math.PI;
-        const radius = 320;
-        node.x = cx + radius * Math.cos(angle);
-        node.y = cy + radius * Math.sin(angle);
-      }
+    const totalAbilities = abilityNodes.length || 1;
+    abilityNodes.forEach((node, idx) => {
+      const angle = (idx / totalAbilities) * 2 * Math.PI;
+      const radius = Math.max(380, totalAbilities * 26);
+      node.x = cx + radius * Math.cos(angle);
+      node.y = cy + radius * Math.sin(angle);
     });
+
+    const totalItems = itemNodes.length || 1;
+    itemNodes.forEach((node, idx) => {
+      const angle = (idx / totalItems) * 2 * Math.PI - Math.PI / 4;
+      const radius = Math.max(540, totalItems * 26);
+      node.x = cx + radius * Math.cos(angle);
+      node.y = cy + radius * Math.sin(angle);
+    });
+
+    const totalLocs = locNodes.length || 1;
+    locNodes.forEach((node, idx) => {
+      const angle = (idx / totalLocs) * 2 * Math.PI + Math.PI / 6;
+      const radius = Math.max(720, totalLocs * 24);
+      node.x = cx + radius * Math.cos(angle);
+      node.y = cy + radius * Math.sin(angle);
+    });
+
+    // 2. Force Relaxation to Guarantee ZERO Node Overlap (Min distance 150px)
+    const minDistance = 150;
+    for (let iter = 0; iter < 60; iter++) {
+      for (let i = 0; i < allNodes.length; i++) {
+        for (let j = i + 1; j < allNodes.length; j++) {
+          const n1 = allNodes[i];
+          const n2 = allNodes[j];
+          const dx = n2.x - n1.x;
+          const dy = n2.y - n1.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+          if (dist < minDistance) {
+            const overlap = (minDistance - dist) / 2;
+            const nx = (dx / dist) * overlap;
+            const ny = (dy / dist) * overlap;
+            n1.x -= nx;
+            n1.y -= ny;
+            n2.x += nx;
+            n2.y += ny;
+          }
+        }
+      }
+    }
 
     nodeList.push(...allNodes);
 
@@ -186,7 +251,7 @@ export default function CanonGraphPage() {
     });
 
     return { nodes: nodeList, edges: edgeList };
-  }, [characters, abilities, items, locations, relationships, showChars, showAbilities, showItems, showLocations]);
+  }, [characters, abilities, items, locations, relationships, showChars, showAbilities, showItems, showLocations, searchQuery]);
 
   // Connected nodes map for highlighting active selection
   const activeNodeId = hoveredNodeId || selectedNode?.id;
@@ -223,10 +288,10 @@ export default function CanonGraphPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white flex items-center gap-2.5">
-            <Network className="w-6 h-6 text-[#7c3aed]" /> Interactive Mind Map Knowledge Graph
+            <Network className="w-6 h-6 text-[#7c3aed]" /> Redesigned Interactive Mind Map
           </h1>
           <p className="text-xs text-[#8e8ea0] mt-1">
-            Visual mind map connecting characters, abilities, items, and locations with live node relationships.
+            Clean, collision-free mind map layout with active node highlighting and interactive search filter.
           </p>
         </div>
 
@@ -239,67 +304,88 @@ export default function CanonGraphPage() {
           <button onClick={handleZoomIn} className="p-2 rounded-lg bg-[#181820] text-white hover:bg-[#232334]" title="Zoom In">
             <ZoomIn className="w-4 h-4" />
           </button>
-          <button onClick={handleResetZoom} className="p-2 rounded-lg bg-[#181820] text-[#8e8ea0] hover:text-white" title="Reset View">
+          <button onClick={handleResetZoom} className="p-2 rounded-lg bg-[#181820] text-[#8e8ea0] hover:text-white" title="Reset View & Pan">
             <RotateCcw className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Category Toggle Toolbar */}
-      <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#121218] border border-[#232334] text-xs">
-        <span className="font-bold text-[#8e8ea0] uppercase tracking-wider text-[10px] flex items-center gap-1.5">
-          <Filter className="w-3.5 h-3.5 text-[#7c3aed]" /> Filter Mind Map:
-        </span>
-        <button
-          onClick={() => setShowChars(c => !c)}
-          className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
-            showChars ? 'bg-[#7c3aed] text-white' : 'bg-[#181820] text-[#8e8ea0]'
-          }`}
-        >
-          Characters ({characters.length})
-        </button>
-        <button
-          onClick={() => setShowAbilities(a => !a)}
-          className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
-            showAbilities ? 'bg-amber-500 text-black' : 'bg-[#181820] text-[#8e8ea0]'
-          }`}
-        >
-          Abilities ({abilities.length})
-        </button>
-        <button
-          onClick={() => setShowItems(i => !i)}
-          className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
-            showItems ? 'bg-cyan-500 text-black' : 'bg-[#181820] text-[#8e8ea0]'
-          }`}
-        >
-          Items ({items.length})
-        </button>
-        <button
-          onClick={() => setShowLocations(l => !l)}
-          className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
-            showLocations ? 'bg-emerald-500 text-black' : 'bg-[#181820] text-[#8e8ea0]'
-          }`}
-        >
-          Locations ({locations.length})
-        </button>
+      {/* Mind Map Search & Category Filter Toolbar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-[#121218] border border-[#232334] text-xs">
+        <div className="flex items-center gap-3">
+          <span className="font-bold text-[#8e8ea0] uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+            <Filter className="w-3.5 h-3.5 text-[#7c3aed]" /> Filter Nodes:
+          </span>
+          <button
+            onClick={() => setShowChars(c => !c)}
+            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+              showChars ? 'bg-[#7c3aed] text-white' : 'bg-[#181820] text-[#8e8ea0]'
+            }`}
+          >
+            Characters ({characters.length})
+          </button>
+          <button
+            onClick={() => setShowAbilities(a => !a)}
+            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+              showAbilities ? 'bg-amber-500 text-black' : 'bg-[#181820] text-[#8e8ea0]'
+            }`}
+          >
+            Abilities ({abilities.length})
+          </button>
+          <button
+            onClick={() => setShowItems(i => !i)}
+            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+              showItems ? 'bg-cyan-500 text-black' : 'bg-[#181820] text-[#8e8ea0]'
+            }`}
+          >
+            Items ({items.length})
+          </button>
+          <button
+            onClick={() => setShowLocations(l => !l)}
+            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+              showLocations ? 'bg-emerald-500 text-black' : 'bg-[#181820] text-[#8e8ea0]'
+            }`}
+          >
+            Locations ({locations.length})
+          </button>
+        </div>
+
+        {/* Mind Map Search Input */}
+        <div className="relative min-w-[220px]">
+          <Search className="w-3.5 h-3.5 text-[#8e8ea0] absolute left-3 top-2.5" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search mind map (e.g. Isaac, Sophia)..."
+            className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[#181820] border border-[#232334] text-white text-xs placeholder-[#52526b] focus:outline-none focus:border-[#7c3aed]"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Interactive SVG Mind Map Canvas */}
-        <div className="lg:col-span-2 p-4 rounded-2xl bg-[#0c0c10] border border-[#232334] min-h-[560px] relative overflow-hidden flex flex-col items-center justify-center">
-          <div className="absolute top-4 left-4 text-xs font-mono text-[#8e8ea0] flex items-center gap-2 z-10">
-            <Sparkles className="w-4 h-4 text-amber-400" /> Interactive Mind Map Canvas (Click node to inspect)
+        <div
+          className="lg:col-span-2 p-4 rounded-2xl bg-[#0c0c10] border border-[#232334] min-h-[600px] relative overflow-hidden flex flex-col items-center justify-center cursor-grab active:cursor-grabbing"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+        >
+          <div className="absolute top-4 left-4 text-xs font-mono text-[#8e8ea0] flex items-center gap-2 z-10 pointer-events-none">
+            <Sparkles className="w-4 h-4 text-amber-400" /> Interactive Collision-Free Mind Map (Drag to pan)
           </div>
 
           <div
-            className="w-full h-full flex items-center justify-center transition-transform duration-200"
-            style={{ transform: `scale(${zoomScale})` }}
+            className="w-full h-full flex items-center justify-center transition-transform duration-100"
+            style={{
+              transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomScale})`
+            }}
           >
-            <svg viewBox="0 0 1000 700" className="w-full h-[540px]">
+            <svg id="graph-bg" viewBox="0 0 1600 1200" className="w-full h-[580px]">
               <defs>
                 <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="4" result="blur" />
+                  <feGaussianBlur stdDeviation="5" result="blur" />
                   <feComposite in="SourceGraphic" in2="blur" operator="over" />
                 </filter>
               </defs>
@@ -311,8 +397,8 @@ export default function CanonGraphPage() {
                 if (!source || !target) return null;
 
                 const isHighlighted = connectedEdgeIds.has(edge.id);
-                const strokeOpacity = activeNodeId ? (isHighlighted ? 1 : 0.15) : 0.4;
-                const strokeWidth = isHighlighted ? 3 : 1.5;
+                const strokeOpacity = activeNodeId ? (isHighlighted ? 1 : 0.1) : 0.4;
+                const strokeWidth = isHighlighted ? 3.5 : 1.5;
 
                 const midX = (source.x + target.x) / 2;
                 const midY = (source.y + target.y) / 2;
@@ -330,9 +416,9 @@ export default function CanonGraphPage() {
                       strokeDasharray={isHighlighted ? 'none' : '4 4'}
                     />
                     <rect
-                      x={midX - 35}
+                      x={midX - 40}
                       y={midY - 10}
-                      width="70"
+                      width="80"
                       height="20"
                       rx="6"
                       fill="#0c0c10"
@@ -355,56 +441,70 @@ export default function CanonGraphPage() {
                 );
               })}
 
-              {/* Render Mind Map Nodes */}
+              {/* Render Clean Mind Map Node Cards (Non-Overlapping Rectangular Cards) */}
               {nodes.map(node => {
                 const isSelected = selectedNode?.id === node.id;
                 const isConnected = !activeNodeId || connectedNodeIds.has(node.id);
-                const opacity = isConnected ? 1 : 0.25;
+                const opacity = isConnected ? 1 : 0.2;
                 const nodeColor = getNodeColor(node.type);
 
                 return (
                   <g
                     key={node.id}
                     transform={`translate(${node.x}, ${node.y})`}
-                    className="cursor-pointer transition-transform duration-200 hover:scale-110"
-                    onClick={() => setSelectedNode(node)}
+                    className="cursor-pointer transition-transform duration-200 hover:scale-105"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedNode(node);
+                    }}
                     onMouseEnter={() => setHoveredNodeId(node.id)}
                     onMouseLeave={() => setHoveredNodeId(null)}
                     opacity={opacity}
                   >
-                    <circle
-                      r={node.type === 'character' ? 28 : 22}
+                    {/* Node Card Bounding Box */}
+                    <rect
+                      x="-70"
+                      y="-18"
+                      width="140"
+                      height="36"
+                      rx="10"
                       fill="#121218"
                       stroke={isSelected ? '#ffffff' : nodeColor}
-                      strokeWidth={isSelected ? 3.5 : 2}
+                      strokeWidth={isSelected ? 3 : 1.5}
                       filter={isSelected ? 'url(#glow)' : undefined}
                     />
+
+                    {/* Left Icon Status Circle */}
                     <circle
-                      r={node.type === 'character' ? 24 : 18}
+                      cx="-52"
+                      cy="0"
+                      r="9"
                       fill={nodeColor}
-                      fillOpacity="0.25"
                     />
 
-                    {/* Node Text Label */}
+                    {/* Node Label Text Inside Bounding Box */}
                     <text
-                      y={node.type === 'character' ? 42 : 36}
+                      x="-36"
+                      y="4"
                       fill="#ffffff"
-                      fontSize={node.type === 'character' ? '11' : '10'}
+                      fontSize="10"
                       fontWeight="bold"
-                      textAnchor="middle"
-                      className="drop-shadow-md"
+                      textAnchor="start"
                     >
-                      {node.name.length > 15 ? node.name.substring(0, 14) + '...' : node.name}
+                      {node.name.length > 13 ? node.name.substring(0, 12) + '…' : node.name}
                     </text>
+
+                    {/* Node Sub-Type Badge */}
                     <text
-                      y={node.type === 'character' ? 53 : 47}
+                      x="58"
+                      y="4"
                       fill={nodeColor}
-                      fontSize="8"
+                      fontSize="7"
                       fontWeight="bold"
-                      textAnchor="middle"
-                      className="uppercase tracking-wider font-mono"
+                      textAnchor="end"
+                      className="uppercase font-mono"
                     >
-                      {node.type}
+                      {node.type.substring(0, 4)}
                     </text>
                   </g>
                 );
@@ -434,7 +534,7 @@ export default function CanonGraphPage() {
               <h4 className="font-extrabold text-[#a78bfa] uppercase tracking-wider text-[10px]">
                 Connected Mind Map Nodes
               </h4>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
                 {edges.filter(e => e.sourceId === selectedNode.id || e.targetId === selectedNode.id).map((e, idx) => {
                   const otherId = e.sourceId === selectedNode.id ? e.targetId : e.sourceId;
                   const otherNode = nodes.find(n => n.id === otherId);
