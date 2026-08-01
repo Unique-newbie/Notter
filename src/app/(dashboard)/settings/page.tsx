@@ -601,17 +601,13 @@ export default function ConsolidatedSettingsPage() {
       {activeTab === 'info' && (
         <div className="p-6 rounded-2xl bg-[#121218] border border-[#232334] space-y-4 shadow-xl font-mono text-xs">
           <h2 className="text-base font-bold text-white font-sans flex items-center gap-2">
-            <Info className="w-4 h-4 text-amber-400" /> Diagnostics & Storage Telemetry
+            <Info className="w-4 h-4 text-amber-400" /> System Information
           </h2>
 
           <div className="space-y-2 p-4 rounded-xl bg-[#0c0c10] border border-[#232334] text-[#a1a1aa]">
             <div className="flex justify-between border-b border-[#232334] pb-2">
               <span>Application Version:</span>
-              <span className="text-white font-bold">Notter v2.2.0 (Offline First)</span>
-            </div>
-            <div className="flex justify-between border-b border-[#232334] pb-2">
-              <span>IndexedDB Status:</span>
-              <span className="text-emerald-400 font-bold">Active (12 Object Stores)</span>
+              <span className="text-white font-bold">Notter v1.0.0</span>
             </div>
             <div className="flex justify-between border-b border-[#232334] pb-2">
               <span>Total Novels Stored:</span>
