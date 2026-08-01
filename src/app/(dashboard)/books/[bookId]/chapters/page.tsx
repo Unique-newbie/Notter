@@ -34,9 +34,16 @@ export default function ChaptersPage() {
   const [saveToast, setSaveToast] = useState('');
   const [errorToast, setErrorToast] = useState('');
 
-  // Refs for infinite loop prevention
+  // Refs to hold latest editor state without causing callback recreation
   const loadedChapterIdRef = useRef<string | null>(null);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const editorStateRef = useRef({ title: '', chapterNumber: 1, content: '' });
+  const activeChapterRef = useRef<Chapter | null>(null);
+  const isSwitchingRef = useRef(false);
+
+  // Keep refs in sync with state
+  useEffect(() => { editorStateRef.current = { title, chapterNumber, content }; }, [title, chapterNumber, content]);
+  useEffect(() => { activeChapterRef.current = activeChapter; }, [activeChapter]);
 
   // Zen & Sprint Mode State
   const [zenPadOpen, setZenPadOpen] = useState(false);
@@ -52,25 +59,39 @@ export default function ChaptersPage() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [currentDraft, setCurrentDraft] = useState<AIExtraction | null>(null);
 
+  // Stable selectChapter — reads latest editor state from refs, never causes re-creation
   const selectChapter = useCallback(async (chap: Chapter) => {
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-      if (activeChapter && loadedChapterIdRef.current === activeChapter.id) {
-        await repository.updateChapter(activeChapter.id, {
-          title,
-          chapterNumber,
-          content
-        });
-      }
-    }
-    loadedChapterIdRef.current = chap.id;
-    setActiveChapter(chap);
-    setTitle(chap.title);
-    setChapterNumber(chap.chapterNumber);
-    setContent(chap.content);
-    setSaveStatus('saved');
-  }, [activeChapter, title, chapterNumber, content]);
+    if (isSwitchingRef.current) return;
+    isSwitchingRef.current = true;
 
+    try {
+      // Flush pending auto-save for the PREVIOUS chapter using refs
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+        const prev = activeChapterRef.current;
+        if (prev && loadedChapterIdRef.current === prev.id) {
+          const s = editorStateRef.current;
+          await repository.updateChapter(prev.id, {
+            title: s.title,
+            chapterNumber: s.chapterNumber,
+            content: s.content
+          });
+        }
+      }
+
+      loadedChapterIdRef.current = chap.id;
+      setActiveChapter(chap);
+      setTitle(chap.title);
+      setChapterNumber(chap.chapterNumber);
+      setContent(chap.content);
+      setSaveStatus('saved');
+    } finally {
+      isSwitchingRef.current = false;
+    }
+  }, []); // No dependencies — reads from refs
+
+  // Stable refreshChapters — only depends on bookId (primitive) and stable selectChapter
   const refreshChapters = useCallback(async (targetChapterId?: string) => {
     const list = await repository.getChapters(bookId);
     setChapters(list);
@@ -78,10 +99,14 @@ export default function ChaptersPage() {
     if (list.length > 0) {
       const preferredId = targetChapterId || loadedChapterIdRef.current || initialChapterId;
       const selected = list.find(c => c.id === preferredId) || list[0];
-      selectChapter(selected);
+      await selectChapter(selected);
+    } else {
+      setActiveChapter(null);
+      loadedChapterIdRef.current = null;
     }
   }, [bookId, initialChapterId, selectChapter]);
 
+  // Initial load — runs only when bookId changes
   useEffect(() => {
     refreshChapters();
     const handleDataChanged = async () => {
@@ -93,11 +118,26 @@ export default function ChaptersPage() {
   }, [bookId, refreshChapters]);
 
   const handleCreateChapter = async () => {
+    // Flush current chapter first
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+      const prev = activeChapterRef.current;
+      if (prev && loadedChapterIdRef.current === prev.id) {
+        const s = editorStateRef.current;
+        await repository.updateChapter(prev.id, {
+          title: s.title,
+          chapterNumber: s.chapterNumber,
+          content: s.content
+        });
+      }
+    }
+
     const newChap = await repository.createChapter(bookId, `Chapter ${chapters.length + 1}`, '');
     if (newChap) {
       const list = await repository.getChapters(bookId);
       setChapters(list);
-      selectChapter(newChap);
+      await selectChapter(newChap);
     }
   };
 
@@ -107,27 +147,34 @@ export default function ChaptersPage() {
       const remaining = await repository.getChapters(bookId);
       setChapters(remaining);
       if (remaining.length > 0) {
-        selectChapter(remaining[0]);
+        await selectChapter(remaining[0]);
       } else {
         setActiveChapter(null);
+        loadedChapterIdRef.current = null;
       }
     }
   };
 
-  const handleSaveContent = async () => {
-    if (!activeChapter || loadedChapterIdRef.current !== activeChapter.id) return;
+  const handleSaveContent = useCallback(async () => {
+    const ac = activeChapterRef.current;
+    if (!ac || loadedChapterIdRef.current !== ac.id) return;
     setSaveStatus('saving');
-    await repository.updateChapter(activeChapter.id, {
-      title,
-      chapterNumber,
-      content
+    const s = editorStateRef.current;
+    await repository.updateChapter(ac.id, {
+      title: s.title,
+      chapterNumber: s.chapterNumber,
+      content: s.content
     });
+
+    // Update the activeChapter object in place so dirty-check doesn't re-trigger
+    setActiveChapter(prev => prev ? { ...prev, title: s.title, chapterNumber: s.chapterNumber, content: s.content } : prev);
     setSaveStatus('saved');
-  };
+  }, []);
 
   // Safe Auto-save on content change with 1000ms debounce
   useEffect(() => {
     if (!activeChapter || loadedChapterIdRef.current !== activeChapter.id) return;
+    if (isSwitchingRef.current) return;
     
     // Check if content actually modified from activeChapter baseline
     if (
@@ -148,7 +195,7 @@ export default function ChaptersPage() {
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
-  }, [content, title, chapterNumber, activeChapter]);
+  }, [content, title, chapterNumber, activeChapter, handleSaveContent]);
 
   // Open review modal for existing pending or approved extraction draft
   const handleOpenPendingReview = async (chapId?: string) => {
