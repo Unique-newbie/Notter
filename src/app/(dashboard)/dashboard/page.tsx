@@ -6,6 +6,7 @@ import { BookOpen, Layers, Clock, ArrowRight, FileText, Flame, Star, Archive, Ro
 import { repository } from '@/lib/store/repository';
 import { sprintStore } from '@/lib/store/sprintStore';
 import { Book } from '@/types';
+import { AnnouncementBar } from "@/app/(dashboard)/about/AnnouncementBar";
 
 interface ProcessedBook extends Book {
   calculatedChapterCount: number;
@@ -97,7 +98,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
-      
+
+      <AnnouncementBar />
+
       {/* Welcome Banner with Quick Continue Card */}
       <div className="p-8 rounded-2xl bg-gradient-to-r from-[#121218] via-[#1a102f] to-[#121218] border border-[#7c3aed]/30 relative overflow-hidden shadow-purple flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
         <div className="relative z-10 max-w-2xl">
