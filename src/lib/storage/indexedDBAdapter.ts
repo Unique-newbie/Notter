@@ -80,7 +80,6 @@ export class IndexedDBAdapter {
       const tx = db.transaction(storeName, 'readonly');
       const store = tx.objectStore(storeName);
       if (!store.indexNames.contains('bookId')) {
-        // Fallback to filtering all records if index doesn't exist
         const request = store.getAll();
         request.onsuccess = () => {
           const list = (request.result || []).filter((item: any) => item.bookId === bookId);
@@ -94,6 +93,19 @@ export class IndexedDBAdapter {
       request.onsuccess = () => resolve(request.result || []);
       request.onerror = () => reject(request.error);
     });
+  }
+
+  // Delete All Records matching a Book ID
+  async deleteAllByBookId(storeName: string, bookId: string): Promise<number> {
+    const items = await this.getAllByBookId<{ id: string }>(storeName, bookId);
+    let count = 0;
+    for (const item of items) {
+      if (item.id) {
+        await this.delete(storeName, item.id);
+        count++;
+      }
+    }
+    return count;
   }
 
   // Generic Get Single Item by Primary Key
@@ -155,9 +167,56 @@ export class IndexedDBAdapter {
     });
   }
 
+  // Export Single Book & All Associated Entities JSON
+  async exportSingleBookJSON(bookId: string): Promise<string> {
+    const book = await this.getById('books', bookId);
+    if (!book) throw new Error('Book not found');
+
+    const entityStores = [
+      'chapters', 'characters', 'abilities', 'items',
+      'locations', 'organizations', 'relationships',
+      'dialogue_facts', 'timeline_events', 'ai_extractions'
+    ];
+
+    const bookData: Record<string, any[]> = {};
+    for (const storeName of entityStores) {
+      bookData[storeName] = await this.getAllByBookId(storeName, bookId);
+    }
+
+    return JSON.stringify({
+      version: '2.0-single-book',
+      exportedAt: new Date().toISOString(),
+      book,
+      data: bookData
+    }, null, 2);
+  }
+
+  // Import Single Book JSON
+  async importSingleBookJSON(jsonString: string): Promise<boolean> {
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (!parsed.book || !parsed.book.id) return false;
+
+      await this.save('books', parsed.book);
+
+      if (parsed.data) {
+        for (const [storeName, items] of Object.entries(parsed.data)) {
+          if (Array.isArray(items)) {
+            for (const item of items) {
+              await this.save(storeName, item);
+            }
+          }
+        }
+      }
+      return true;
+    } catch (e) {
+      console.error('[IndexedDB] Single book import failed:', e);
+      return false;
+    }
+  }
+
   // Export Complete Workspace JSON
   async exportFullWorkspaceJSON(): Promise<string> {
-    const db = await this.getDB();
     const stores = [
       'books', 'chapters', 'characters', 'abilities',
       'items', 'locations', 'organizations', 'relationships',

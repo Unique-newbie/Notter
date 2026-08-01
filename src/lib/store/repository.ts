@@ -44,22 +44,6 @@ class StoryRepository {
         try { favIds = JSON.parse(localStorage.getItem('notter_fav_books') || '[]'); } catch (e) {}
       }
 
-      if (books.length === 0) {
-        // Automatically seed default book if empty
-        const defaultBook: Book = {
-          id: 'book-1',
-          title: 'The Sovereign Realm',
-          description: 'A dark fantasy LitRPG novel following Isaac as he awakens a legendary hidden cultivation system.',
-          coverColor: '#7C3AED',
-          genre: 'LitRPG / Dark Fantasy',
-          status: 'Drafting',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        await indexedDBAdapter.save('books', defaultBook);
-        return [{ ...defaultBook, isFavorite: favIds.includes(defaultBook.id) }];
-      }
-
       return books.map(b => ({
         ...b,
         isFavorite: favIds.includes(b.id)
@@ -71,24 +55,10 @@ class StoryRepository {
 
   async getBook(id: string): Promise<Book | undefined> {
     try {
-      const book = await indexedDBAdapter.getById<Book>('books', id);
-      if (book) return book;
-    } catch (e) {}
-
-    if (id === 'book-1') {
-      return {
-        id: 'book-1',
-        title: 'The Sovereign Realm',
-        description: 'A dark fantasy LitRPG novel following Isaac as he awakens a legendary hidden cultivation system.',
-        coverColor: '#7C3AED',
-        genre: 'LitRPG / Dark Fantasy',
-        status: 'Drafting',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+      return await indexedDBAdapter.getById<Book>('books', id);
+    } catch (e) {
+      return undefined;
     }
-
-    return undefined;
   }
 
   async createBook(book: Omit<Book, 'id' | 'createdAt' | 'updatedAt' | 'chapterCount' | 'totalWordCount'>): Promise<Book | null> {
@@ -148,7 +118,26 @@ class StoryRepository {
   }
 
   async deleteBook(id: string): Promise<boolean> {
+    const storesToCascade = [
+      'chapters', 'characters', 'abilities', 'items',
+      'locations', 'organizations', 'relationships',
+      'dialogue_facts', 'timeline_events', 'ai_extractions'
+    ];
+
+    for (const storeName of storesToCascade) {
+      await indexedDBAdapter.deleteAllByBookId(storeName, id);
+    }
+
     await indexedDBAdapter.delete('books', id);
+
+    if (typeof window !== 'undefined') {
+      try {
+        const favs = JSON.parse(localStorage.getItem('notter_fav_books') || '[]');
+        const updatedFavs = favs.filter((fId: string) => fId !== id);
+        localStorage.setItem('notter_fav_books', JSON.stringify(updatedFavs));
+      } catch (e) {}
+    }
+
     this.notifyDataChanged();
     return true;
   }
