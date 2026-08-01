@@ -4,7 +4,10 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { repository } from '@/lib/store/repository';
 import { Character, Ability, Item, LocationEntity, Relationship } from '@/types';
-import { GitBranch, Users, Shield, Package, MapPin, Sparkles, Filter, ZoomIn, ZoomOut, RotateCcw, Eye, Network, Search } from 'lucide-react';
+import {
+  GitBranch, Users, Shield, Package, MapPin, Sparkles, Filter,
+  ZoomIn, ZoomOut, RotateCcw, Eye, Network, Search, Maximize2, Minimize2, X
+} from 'lucide-react';
 import Link from 'next/link';
 
 interface MindNode {
@@ -43,6 +46,7 @@ export default function CanonGraphPage() {
   const [showItems, setShowItems] = useState(true);
   const [showLocations, setShowLocations] = useState(true);
   const [zoomScale, setZoomScale] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Pan State
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -68,15 +72,22 @@ export default function CanonGraphPage() {
     loadData();
   }, [bookId]);
 
-  const handleZoomIn = () => setZoomScale(z => Math.min(2.0, z + 0.15));
-  const handleZoomOut = () => setZoomScale(z => Math.max(0.4, z - 0.15));
+  // Smooth Mouse Wheel Zooming
+  const handleWheel = (e: React.WheelEvent) => {
+    const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+    setZoomScale(z => Math.max(0.3, Math.min(3.0, z * zoomFactor)));
+  };
+
+  const handleZoomIn = () => setZoomScale(z => Math.min(3.0, z + 0.15));
+  const handleZoomOut = () => setZoomScale(z => Math.max(0.3, z - 0.15));
   const handleResetZoom = () => {
     setZoomScale(1);
     setPanOffset({ x: 0, y: 0 });
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).tagName === 'svg' || (e.target as HTMLElement).id === 'graph-bg') {
+    const target = e.target as HTMLElement;
+    if (target.id === 'graph-bg' || target.tagName === 'svg' || target.classList.contains('canvas-container')) {
       setIsDragging(true);
       dragStartRef.current = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
     }
@@ -93,7 +104,14 @@ export default function CanonGraphPage() {
 
   const handleMouseUp = () => setIsDragging(false);
 
-  // Calculate Collision-Free Mind Map Layout
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.id === 'graph-bg' || target.tagName === 'svg') {
+      setSelectedNode(null);
+    }
+  };
+
+  // Calculate Stable Mind Map Layout (Collision-Free, Non-overlapping Nodes)
   const { nodes, edges } = useMemo(() => {
     const nodeList: MindNode[] = [];
     const edgeList: MindEdge[] = [];
@@ -123,15 +141,15 @@ export default function CanonGraphPage() {
     const allNodes = [...charNodes, ...abilityNodes, ...itemNodes, ...locNodes];
     if (allNodes.length === 0) return { nodes: [], edges: [] };
 
-    // Canvas Center Dimensions (Spacious 1600x1200 Coordinate Space)
+    // Canvas Center Dimensions
     const cx = 800;
     const cy = 600;
 
-    // 1. Initial Radial Ring Positions
+    // Concentric Ring Positioning
     const totalChars = charNodes.length || 1;
     charNodes.forEach((node, idx) => {
       const angle = (idx / totalChars) * 2 * Math.PI - Math.PI / 2;
-      const radius = Math.max(180, totalChars * 32);
+      const radius = Math.max(180, totalChars * 30);
       node.x = cx + radius * Math.cos(angle);
       node.y = cy + radius * Math.sin(angle);
     });
@@ -147,7 +165,7 @@ export default function CanonGraphPage() {
     const totalItems = itemNodes.length || 1;
     itemNodes.forEach((node, idx) => {
       const angle = (idx / totalItems) * 2 * Math.PI - Math.PI / 4;
-      const radius = Math.max(540, totalItems * 26);
+      const radius = Math.max(560, totalItems * 26);
       node.x = cx + radius * Math.cos(angle);
       node.y = cy + radius * Math.sin(angle);
     });
@@ -155,14 +173,14 @@ export default function CanonGraphPage() {
     const totalLocs = locNodes.length || 1;
     locNodes.forEach((node, idx) => {
       const angle = (idx / totalLocs) * 2 * Math.PI + Math.PI / 6;
-      const radius = Math.max(720, totalLocs * 24);
+      const radius = Math.max(740, totalLocs * 24);
       node.x = cx + radius * Math.cos(angle);
       node.y = cy + radius * Math.sin(angle);
     });
 
-    // 2. Force Relaxation to Guarantee ZERO Node Overlap (Min distance 150px)
+    // Force Relaxation for Zero Node Collisions
     const minDistance = 150;
-    for (let iter = 0; iter < 60; iter++) {
+    for (let iter = 0; iter < 40; iter++) {
       for (let i = 0; i < allNodes.length; i++) {
         for (let j = i + 1; j < allNodes.length; j++) {
           const n1 = allNodes[i];
@@ -186,7 +204,7 @@ export default function CanonGraphPage() {
 
     nodeList.push(...allNodes);
 
-    // Build Edges between Character <-> Character
+    // Build Character Relationships
     relationships.forEach(rel => {
       const source = charNodes.find(c => c.name === rel.character1Name);
       const target = charNodes.find(c => c.name === rel.character2Name);
@@ -201,7 +219,7 @@ export default function CanonGraphPage() {
       }
     });
 
-    // Build Edges between Character <-> Ability
+    // Build Ability Links
     abilityNodes.forEach(ab => {
       const users = ab.data.userCharacterNames || [];
       users.forEach((userName: string) => {
@@ -218,7 +236,7 @@ export default function CanonGraphPage() {
       });
     });
 
-    // Build Edges between Character <-> Item
+    // Build Item Links
     itemNodes.forEach(item => {
       const owner = item.data.ownerCharacterName;
       if (owner) {
@@ -235,7 +253,7 @@ export default function CanonGraphPage() {
       }
     });
 
-    // Build Edges between Character <-> Location
+    // Build Location Links
     locNodes.forEach(loc => {
       charNodes.forEach(char => {
         if (char.data.currentLocation === loc.name) {
@@ -283,42 +301,49 @@ export default function CanonGraphPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 select-none">
+    <div className={`space-y-6 max-w-7xl mx-auto pb-12 select-none ${isFullscreen ? 'fixed inset-0 z-50 bg-[#09090b] max-w-none p-6 pb-6 overflow-hidden flex flex-col justify-between' : ''}`}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white flex items-center gap-2.5">
-            <Network className="w-6 h-6 text-[#7c3aed]" /> Redesigned Interactive Mind Map
+            <Network className="w-6 h-6 text-[#7c3aed]" /> Interactive Mind Map Knowledge Graph
           </h1>
           <p className="text-xs text-[#8e8ea0] mt-1">
-            Clean, collision-free mind map layout with active node highlighting and interactive search filter.
+            Smooth, collision-free mind map layout with active connection highlighting, pan/zoom, and fullscreen mode.
           </p>
         </div>
 
-        {/* Zoom & Reset Controls */}
+        {/* Zoom, Fullscreen & Reset Controls */}
         <div className="flex items-center gap-2 p-1.5 rounded-xl bg-[#121218] border border-[#232334]">
-          <button onClick={handleZoomOut} className="p-2 rounded-lg bg-[#181820] text-white hover:bg-[#232334]" title="Zoom Out">
+          <button onClick={handleZoomOut} className="p-2 rounded-lg bg-[#181820] text-white hover:bg-[#232334]" title="Zoom Out (or Scroll Wheel)">
             <ZoomOut className="w-4 h-4" />
           </button>
           <span className="font-mono text-xs text-[#a78bfa] px-2">{Math.round(zoomScale * 100)}%</span>
-          <button onClick={handleZoomIn} className="p-2 rounded-lg bg-[#181820] text-white hover:bg-[#232334]" title="Zoom In">
+          <button onClick={handleZoomIn} className="p-2 rounded-lg bg-[#181820] text-white hover:bg-[#232334]" title="Zoom In (or Scroll Wheel)">
             <ZoomIn className="w-4 h-4" />
           </button>
           <button onClick={handleResetZoom} className="p-2 rounded-lg bg-[#181820] text-[#8e8ea0] hover:text-white" title="Reset View & Pan">
             <RotateCcw className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setIsFullscreen(f => !f)}
+            className="p-2 rounded-lg bg-[#7c3aed] text-white hover:bg-[#6d28d9] transition-all ml-1 shadow-purple"
+            title={isFullscreen ? 'Exit Full Screen' : 'Go Full Screen'}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
         </div>
       </div>
 
       {/* Mind Map Search & Category Filter Toolbar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-[#121218] border border-[#232334] text-xs">
-        <div className="flex items-center gap-3">
-          <span className="font-bold text-[#8e8ea0] uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+        <div className="flex items-center gap-3 overflow-x-auto">
+          <span className="font-bold text-[#8e8ea0] uppercase tracking-wider text-[10px] flex items-center gap-1.5 shrink-0">
             <Filter className="w-3.5 h-3.5 text-[#7c3aed]" /> Filter Nodes:
           </span>
           <button
             onClick={() => setShowChars(c => !c)}
-            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+            className={`px-3 py-1.5 rounded-xl font-bold transition-all whitespace-nowrap ${
               showChars ? 'bg-[#7c3aed] text-white' : 'bg-[#181820] text-[#8e8ea0]'
             }`}
           >
@@ -326,7 +351,7 @@ export default function CanonGraphPage() {
           </button>
           <button
             onClick={() => setShowAbilities(a => !a)}
-            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+            className={`px-3 py-1.5 rounded-xl font-bold transition-all whitespace-nowrap ${
               showAbilities ? 'bg-amber-500 text-black' : 'bg-[#181820] text-[#8e8ea0]'
             }`}
           >
@@ -334,7 +359,7 @@ export default function CanonGraphPage() {
           </button>
           <button
             onClick={() => setShowItems(i => !i)}
-            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+            className={`px-3 py-1.5 rounded-xl font-bold transition-all whitespace-nowrap ${
               showItems ? 'bg-cyan-500 text-black' : 'bg-[#181820] text-[#8e8ea0]'
             }`}
           >
@@ -342,7 +367,7 @@ export default function CanonGraphPage() {
           </button>
           <button
             onClick={() => setShowLocations(l => !l)}
-            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+            className={`px-3 py-1.5 rounded-xl font-bold transition-all whitespace-nowrap ${
               showLocations ? 'bg-emerald-500 text-black' : 'bg-[#181820] text-[#8e8ea0]'
             }`}
           >
@@ -363,29 +388,31 @@ export default function CanonGraphPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${isFullscreen ? 'flex-1' : ''}`}>
         
         {/* Interactive SVG Mind Map Canvas */}
         <div
-          className="lg:col-span-2 p-4 rounded-2xl bg-[#0c0c10] border border-[#232334] min-h-[600px] relative overflow-hidden flex flex-col items-center justify-center cursor-grab active:cursor-grabbing"
+          className={`lg:col-span-2 p-4 rounded-2xl bg-[#0c0c10] border border-[#232334] min-h-[600px] relative overflow-hidden flex flex-col items-center justify-center cursor-grab active:cursor-grabbing canvas-container ${isFullscreen ? 'h-full' : ''}`}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
+          onWheel={handleWheel}
+          onClick={handleBackgroundClick}
         >
           <div className="absolute top-4 left-4 text-xs font-mono text-[#8e8ea0] flex items-center gap-2 z-10 pointer-events-none">
-            <Sparkles className="w-4 h-4 text-amber-400" /> Interactive Collision-Free Mind Map (Drag to pan)
+            <Sparkles className="w-4 h-4 text-amber-400" /> Smooth Mind Map Canvas (Scroll to zoom • Drag to pan • Click empty space to unselect)
           </div>
 
           <div
-            className="w-full h-full flex items-center justify-center transition-transform duration-100"
+            className="w-full h-full flex items-center justify-center pointer-events-auto"
             style={{
               transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomScale})`
             }}
           >
-            <svg id="graph-bg" viewBox="0 0 1600 1200" className="w-full h-[580px]">
+            <svg id="graph-bg" viewBox="0 0 1600 1200" className="w-full h-full min-h-[580px]">
               <defs>
                 <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="5" result="blur" />
+                  <feGaussianBlur stdDeviation="4" result="blur" />
                   <feComposite in="SourceGraphic" in2="blur" operator="over" />
                 </filter>
               </defs>
@@ -441,7 +468,7 @@ export default function CanonGraphPage() {
                 );
               })}
 
-              {/* Render Clean Mind Map Node Cards (Non-Overlapping Rectangular Cards) */}
+              {/* Render Stable Non-Flickering Mind Map Node Cards */}
               {nodes.map(node => {
                 const isSelected = selectedNode?.id === node.id;
                 const isConnected = !activeNodeId || connectedNodeIds.has(node.id);
@@ -452,16 +479,16 @@ export default function CanonGraphPage() {
                   <g
                     key={node.id}
                     transform={`translate(${node.x}, ${node.y})`}
-                    className="cursor-pointer transition-transform duration-200 hover:scale-105"
+                    className="cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedNode(node);
+                      setSelectedNode(prev => prev?.id === node.id ? null : node);
                     }}
                     onMouseEnter={() => setHoveredNodeId(node.id)}
                     onMouseLeave={() => setHoveredNodeId(null)}
                     opacity={opacity}
                   >
-                    {/* Node Card Bounding Box */}
+                    {/* Bounding Card Box */}
                     <rect
                       x="-70"
                       y="-18"
@@ -474,7 +501,7 @@ export default function CanonGraphPage() {
                       filter={isSelected ? 'url(#glow)' : undefined}
                     />
 
-                    {/* Left Icon Status Circle */}
+                    {/* Left Color Pill Indicator */}
                     <circle
                       cx="-52"
                       cy="0"
@@ -482,7 +509,7 @@ export default function CanonGraphPage() {
                       fill={nodeColor}
                     />
 
-                    {/* Node Label Text Inside Bounding Box */}
+                    {/* Node Name Label Inside Bounding Box */}
                     <text
                       x="-36"
                       y="4"
@@ -494,7 +521,7 @@ export default function CanonGraphPage() {
                       {node.name.length > 13 ? node.name.substring(0, 12) + '…' : node.name}
                     </text>
 
-                    {/* Node Sub-Type Badge */}
+                    {/* Node Type Badge */}
                     <text
                       x="58"
                       y="4"
@@ -523,6 +550,14 @@ export default function CanonGraphPage() {
                 </span>
                 <h3 className="text-xl font-extrabold text-white mt-1">{selectedNode.name}</h3>
               </div>
+
+              <button
+                onClick={() => setSelectedNode(null)}
+                className="p-1 rounded-lg text-[#8e8ea0] hover:text-white"
+                title="Unselect / Close Inspector"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
             <p className="text-[#a1a1aa] leading-relaxed">
