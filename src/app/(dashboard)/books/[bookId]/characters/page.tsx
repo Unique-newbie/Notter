@@ -514,24 +514,60 @@ export default function CharactersPage() {
                   <p className="text-[#a1a1aa] leading-relaxed">{selectedChar.summary || 'No biography recorded.'}</p>
                 </div>
 
+                {/* Dynamic Novel Attributes Grid */}
+                {selectedChar.dynamicAttributes && Object.keys(selectedChar.dynamicAttributes).length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className="font-bold text-[#a78bfa] uppercase tracking-wider text-[10px]">World System &amp; Dynamic Attributes</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 font-mono">
+                      {Object.entries(selectedChar.dynamicAttributes).map(([key, val]) => (
+                        <div key={key} className="p-3 rounded-xl bg-[#181820] border border-amber-500/30">
+                          <div className="text-[10px] text-amber-400 font-extrabold uppercase">{key}</div>
+                          <div className="font-bold text-white text-xs mt-0.5">{String(val)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
-                  <div className="p-3 rounded-xl bg-[#181820] border border-[#232334]">
-                    <div className="text-[10px] text-[#8e8ea0] uppercase">Species / Race</div>
-                    <div className="font-bold text-white text-xs mt-0.5">{selectedChar.species || selectedChar.race || 'Human'}</div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-[#181820] border border-[#232334]">
-                    <div className="text-[10px] text-[#8e8ea0] uppercase">Occupation</div>
-                    <div className="font-bold text-white text-xs mt-0.5">{selectedChar.occupation || 'Unspecified'}</div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-[#181820] border border-[#232334]">
-                    <div className="text-[10px] text-[#8e8ea0] uppercase">Current Location</div>
-                    <div className="font-bold text-white text-xs mt-0.5">{selectedChar.currentLocation || 'Unknown'}</div>
-                  </div>
+                  {selectedChar.species && (
+                    <div className="p-3 rounded-xl bg-[#181820] border border-[#232334]">
+                      <div className="text-[10px] text-[#8e8ea0] uppercase">Species / Race</div>
+                      <div className="font-bold text-white text-xs mt-0.5">{selectedChar.species}</div>
+                    </div>
+                  )}
+                  {selectedChar.occupation && (
+                    <div className="p-3 rounded-xl bg-[#181820] border border-[#232334]">
+                      <div className="text-[10px] text-[#8e8ea0] uppercase">Occupation</div>
+                      <div className="font-bold text-white text-xs mt-0.5">{selectedChar.occupation}</div>
+                    </div>
+                  )}
+                  {selectedChar.currentLocation && (
+                    <div className="p-3 rounded-xl bg-[#181820] border border-[#232334]">
+                      <div className="text-[10px] text-[#8e8ea0] uppercase">Current Location</div>
+                      <div className="font-bold text-white text-xs mt-0.5">{selectedChar.currentLocation}</div>
+                    </div>
+                  )}
                   <div className="p-3 rounded-xl bg-[#181820] border border-[#232334]">
                     <div className="text-[10px] text-[#8e8ea0] uppercase">Status</div>
                     <div className="font-bold text-emerald-400 text-xs mt-0.5">{selectedChar.status}</div>
                   </div>
                 </div>
+
+                {/* Explicit Known Facts Stream */}
+                {selectedChar.knownFacts && selectedChar.knownFacts.length > 0 && (
+                  <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] space-y-2">
+                    <h3 className="font-bold text-[#a78bfa] uppercase tracking-wider text-[10px]">Verified Canonical Facts</h3>
+                    <div className="space-y-1.5">
+                      {selectedChar.knownFacts.map((fact, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-white text-xs">
+                          <span className="text-amber-400 font-bold">•</span>
+                          <span>{fact}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {selectedChar.goals && (
                   <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs space-y-1">
@@ -545,57 +581,96 @@ export default function CharactersPage() {
             {/* Tab 2: Physical Appearance */}
             {activeTab === 'physical' && (
               <div className="space-y-4 text-xs">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 font-mono">
-                  <div className="p-3 rounded-xl bg-[#181820] border border-[#232334]">
-                    <div className="text-[10px] text-[#8e8ea0]">Hair Color</div>
-                    <div className="font-bold text-white">{selectedChar.hairColor || 'Black'}</div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-[#181820] border border-[#232334]">
-                    <div className="text-[10px] text-[#8e8ea0]">Eye Color</div>
-                    <div className="font-bold text-white">{selectedChar.eyeColor || 'Dark Brown'}</div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-[#181820] border border-[#232334]">
-                    <div className="text-[10px] text-[#8e8ea0]">Height / Weight</div>
-                    <div className="font-bold text-white">{selectedChar.height || '180 cm'} / {selectedChar.weight || '75 kg'}</div>
-                  </div>
+                {/* Explicit Stated Appearance Facts */}
+                <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] space-y-2">
+                  <h3 className="font-bold text-cyan-400 uppercase tracking-wider text-[10px]">Explicit Stated Appearance Facts</h3>
+                  {selectedChar.explicitAppearanceFacts && selectedChar.explicitAppearanceFacts.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedChar.explicitAppearanceFacts.map((trait, idx) => (
+                        <div key={idx} className="flex items-center gap-2 p-2.5 rounded-lg bg-[#121218] border border-[#232334] text-white">
+                          <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                          <span>{trait}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[#8e8ea0] italic">No explicit physical appearance traits stated in chapter prose yet. Zero defaults fabricated.</p>
+                  )}
                 </div>
 
-                {selectedChar.scars && (
-                  <div className="p-3.5 rounded-xl bg-[#181820] border border-[#232334] space-y-1">
-                    <div className="text-[10px] font-bold text-amber-400 uppercase">Scars, Tattoos &amp; Distinguishing Features</div>
-                    <div className="text-white">{selectedChar.scars}</div>
-                  </div>
-                )}
+                {/* Stated physical features if manually added */}
+                {(selectedChar.scars || selectedChar.clothing || selectedChar.physicalInjuries) && (
+                  <div className="space-y-3">
+                    {selectedChar.scars && (
+                      <div className="p-3.5 rounded-xl bg-[#181820] border border-[#232334] space-y-1">
+                        <div className="text-[10px] font-bold text-amber-400 uppercase">Scars, Tattoos &amp; Features</div>
+                        <div className="text-white">{selectedChar.scars}</div>
+                      </div>
+                    )}
 
-                {selectedChar.clothing && (
-                  <div className="p-3.5 rounded-xl bg-[#181820] border border-[#232334] space-y-1">
-                    <div className="text-[10px] font-bold text-cyan-400 uppercase">Current Attire &amp; Armor</div>
-                    <div className="text-white">{selectedChar.clothing}</div>
+                    {selectedChar.clothing && (
+                      <div className="p-3.5 rounded-xl bg-[#181820] border border-[#232334] space-y-1">
+                        <div className="text-[10px] font-bold text-cyan-400 uppercase">Current Attire &amp; Armor</div>
+                        <div className="text-white">{selectedChar.clothing}</div>
+                      </div>
+                    )}
+
+                    {selectedChar.physicalInjuries && (
+                      <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 space-y-1">
+                        <div className="text-[10px] font-bold text-red-400 uppercase">Physical Injuries</div>
+                        <div className="text-white">{selectedChar.physicalInjuries}</div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )}
 
-            {/* Tab 3: RPG Stats */}
+            {/* Tab 3: Dynamic Attributes & Progression History */}
             {activeTab === 'stats' && (
               <div className="space-y-4 text-xs">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
-                  <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] text-center">
-                    <div className="text-[10px] text-[#8e8ea0]">LEVEL</div>
-                    <div className="text-2xl font-extrabold text-amber-400">{selectedChar.level || 1}</div>
+                {/* Dynamic Attributes Grid */}
+                {selectedChar.dynamicAttributes && Object.keys(selectedChar.dynamicAttributes).length > 0 ? (
+                  <div className="space-y-2">
+                    <h3 className="font-bold text-amber-400 uppercase tracking-wider text-[10px]">World System &amp; Dynamic Attributes</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
+                      {Object.entries(selectedChar.dynamicAttributes).map(([key, val]) => (
+                        <div key={key} className="p-4 rounded-xl bg-[#181820] border border-[#232334] text-center">
+                          <div className="text-[10px] text-[#8e8ea0] uppercase">{key}</div>
+                          <div className="text-base font-extrabold text-amber-400 mt-1">{String(val)}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] text-center">
-                    <div className="text-[10px] text-[#8e8ea0]">CLASS</div>
-                    <div className="text-base font-extrabold text-cyan-400">{selectedChar.className || 'Warrior'}</div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] text-center text-[#8e8ea0]">
+                    No dynamic system attributes recorded for this character yet.
                   </div>
-                  <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] text-center">
-                    <div className="text-[10px] text-[#8e8ea0]">HP</div>
-                    <div className="text-base font-extrabold text-emerald-400">{selectedChar.hp || 150} / {selectedChar.maxHp || 150}</div>
-                  </div>
-                  <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] text-center">
-                    <div className="text-[10px] text-[#8e8ea0]">MANA / QI</div>
-                    <div className="text-base font-extrabold text-blue-400">{selectedChar.mana || 80} / {selectedChar.maxMana || 80}</div>
-                  </div>
+                )}
+
+                {/* Progression History Timeline */}
+                <div className="space-y-2 pt-2">
+                  <h3 className="font-bold text-[#a78bfa] uppercase tracking-wider text-[10px]">Attribute Progression History</h3>
+                  {selectedChar.progressionHistory && selectedChar.progressionHistory.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedChar.progressionHistory.map((prog) => (
+                        <div key={prog.id} className="p-3 rounded-xl bg-[#181820] border border-[#232334] flex items-center justify-between">
+                          <div>
+                            <div className="font-bold text-white font-mono flex items-center gap-2">
+                              <span>Ch. {prog.chapterNumber}:</span>
+                              <span className="text-amber-400">{prog.attribute}</span>
+                            </div>
+                            <div className="text-xs text-[#a1a1aa] mt-0.5">
+                              <span className="line-through text-[#8e8ea0]">{prog.oldValue}</span> → <strong className="text-emerald-400">{prog.newValue}</strong>
+                              {prog.reason && <span className="ml-2 text-[#8e8ea0]">({prog.reason})</span>}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[#8e8ea0] italic">No progression changes recorded across chapters yet.</p>
+                  )}
                 </div>
               </div>
             )}

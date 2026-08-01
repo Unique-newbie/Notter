@@ -267,6 +267,10 @@ class StoryRepository {
       firstAppearanceChapterId: c.first_appearance_chapter_id, lastAppearanceChapterId: c.last_appearance_chapter_id,
       appearedInChapterIds: c.appeared_in_chapter_ids || [], chapterAppearances: c.chapter_appearances || [],
       history: c.history || [], tags: c.tags || [], authorNotes: c.author_notes || [],
+      knownFacts: c.known_facts || [],
+      explicitAppearanceFacts: c.explicit_appearance_facts || [],
+      dynamicAttributes: c.dynamic_attributes || {},
+      progressionHistory: c.progression_history || [],
       species: c.species, race: c.race, gender: c.gender, age: c.age, birthday: c.birthday, title: c.title,
       hairColor: c.hair_color, eyeColor: c.eye_color, skinTone: c.skin_tone, height: c.height, weight: c.weight,
       build: c.build, scars: c.scars, tattoos: c.tattoos, distinguishingFeatures: c.distinguishing_features,
@@ -289,6 +293,10 @@ class StoryRepository {
       firstAppearanceChapterId: data.first_appearance_chapter_id, lastAppearanceChapterId: data.last_appearance_chapter_id,
       appearedInChapterIds: data.appeared_in_chapter_ids || [], chapterAppearances: data.chapter_appearances || [],
       history: data.history || [], tags: data.tags || [], authorNotes: data.author_notes || [],
+      knownFacts: data.known_facts || [],
+      explicitAppearanceFacts: data.explicit_appearance_facts || [],
+      dynamicAttributes: data.dynamic_attributes || {},
+      progressionHistory: data.progression_history || [],
       species: data.species, race: data.race, gender: data.gender, age: data.age, birthday: data.birthday, title: data.title,
       hairColor: data.hair_color, eyeColor: data.eye_color, skinTone: data.skin_tone, height: data.height, weight: data.weight,
       build: data.build, scars: data.scars, tattoos: data.tattoos, distinguishingFeatures: data.distinguishing_features,
@@ -673,17 +681,58 @@ class StoryRepository {
           if (existingAppIdx !== -1) appearances[existingAppIdx] = appearance;
           else appearances.push(appearance);
 
+          // Dynamic Facts & Progression Merging
+          const existingFacts = ex.known_facts || [];
+          const newFacts = c.known_facts || [];
+          const mergedFacts = Array.from(new Set([...existingFacts, ...newFacts]));
+
+          const existingAppearances = ex.explicit_appearance_facts || [];
+          const newExplicitAppearances = c.explicit_appearance_facts || [];
+          const mergedExplicitAppearances = Array.from(new Set([...existingAppearances, ...newExplicitAppearances]));
+
+          const existingDynAttrs = ex.dynamic_attributes || {};
+          const newDynAttrs = c.dynamic_attributes || {};
+          const mergedDynAttrs = { ...existingDynAttrs, ...newDynAttrs };
+
+          const existingProgression = ex.progression_history || [];
+          const newProgressionItems = (c.progression_changes || []).map((p: any) => ({
+            id: `prog-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            chapterNumber: chapterNum,
+            attribute: p.attribute,
+            oldValue: p.old_value,
+            newValue: p.new_value,
+            reason: p.reason || ''
+          }));
+          const mergedProgression = [...existingProgression, ...newProgressionItems];
+
           await this.supabase.from('characters').update({
             summary: c.summary || ex.summary, status: c.status || ex.status, occupation: c.occupation || ex.occupation,
             current_location: c.location || ex.current_location, emotional_state: c.emotional_state || ex.emotional_state,
             physical_injuries: c.physical_injuries || ex.physical_injuries, clothing: c.clothing || ex.clothing, goals: c.goals || ex.goals,
-            appeared_in_chapter_ids: appIds, chapter_appearances: appearances
+            appeared_in_chapter_ids: appIds, chapter_appearances: appearances,
+            known_facts: mergedFacts,
+            explicit_appearance_facts: mergedExplicitAppearances,
+            dynamic_attributes: mergedDynAttrs,
+            progression_history: mergedProgression
           }).eq('id', ex.id);
         } else {
+          const newProgressionItems = (c.progression_changes || []).map((p: any) => ({
+            id: `prog-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            chapterNumber: chapterNum,
+            attribute: p.attribute,
+            oldValue: p.old_value,
+            newValue: p.new_value,
+            reason: p.reason || ''
+          }));
+
           await this.supabase.from('characters').insert({
             user_id: userId, book_id: bookId, name: c.name, aliases: c.aliases || [], summary: c.summary || '',
             status: c.status || 'Active', occupation: c.occupation, current_location: c.location, emotional_state: c.emotional_state,
             physical_injuries: c.physical_injuries, clothing: c.clothing, goals: c.goals,
+            known_facts: c.known_facts || [],
+            explicit_appearance_facts: c.explicit_appearance_facts || [],
+            dynamic_attributes: c.dynamic_attributes || {},
+            progression_history: newProgressionItems,
             first_appearance_chapter_id: chapterId, last_appearance_chapter_id: chapterId, appeared_in_chapter_ids: [chapterId], chapter_appearances: [appearance]
           });
         }

@@ -66,6 +66,15 @@ export interface EntityHistoryEvent {
   description: string;
 }
 
+export interface CharacterProgressionChange {
+  id: string;
+  chapterNumber: number;
+  attribute: string;
+  oldValue: string;
+  newValue: string;
+  reason?: string;
+}
+
 export interface Character {
   id: string;
   bookId: string;
@@ -81,6 +90,12 @@ export interface Character {
   clothing?: string;
   goals?: string;
   
+  // Dynamic Fact Architecture
+  knownFacts?: string[];
+  explicitAppearanceFacts?: string[];
+  dynamicAttributes?: Record<string, string | number>;
+  progressionHistory?: CharacterProgressionChange[];
+
   // Extended RPG & Physical Codex Attributes
   species?: string;
   race?: string;
@@ -279,6 +294,15 @@ export interface StructuredExtractionJSON {
     physical_changes?: string;
     clothing?: string;
     goals?: string;
+    known_facts?: string[];
+    explicit_appearance_facts?: string[];
+    dynamic_attributes?: Record<string, string | number>;
+    progression_changes?: {
+      attribute: string;
+      old_value: string;
+      new_value: string;
+      reason?: string;
+    }[];
     secrets_revealed?: string[];
     promises_made?: string[];
     promises_broken?: string[];
