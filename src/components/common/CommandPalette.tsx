@@ -59,13 +59,16 @@ export function CommandPalette({
     { id: 'act-ai', title: 'Analyze Current Chapter with AI', category: 'Actions', icon: Sparkles, perform: () => router.push(`/books/${activeBookId}/chapters`) },
 
     // Themes
-    { id: 'theme-obsidian', title: 'Switch Theme: Obsidian', category: 'Themes', icon: Palette, perform: () => theme.setTheme('obsidian') },
-    { id: 'theme-amoled', title: 'Switch Theme: AMOLED Black', category: 'Themes', icon: Palette, perform: () => theme.setTheme('amoled') },
-    { id: 'theme-dracula', title: 'Switch Theme: Dracula', category: 'Themes', icon: Palette, perform: () => theme.setTheme('dracula') },
-    { id: 'theme-nord', title: 'Switch Theme: Nord', category: 'Themes', icon: Palette, perform: () => theme.setTheme('nord') },
-    { id: 'theme-catppuccin', title: 'Switch Theme: Catppuccin Mocha', category: 'Themes', icon: Palette, perform: () => theme.setTheme('catppuccin') },
-    { id: 'theme-sepia', title: 'Switch Theme: Sepia', category: 'Themes', icon: Palette, perform: () => theme.setTheme('sepia') },
-    { id: 'theme-dark', title: 'Switch Theme: Dark Default', category: 'Themes', icon: Palette, perform: () => theme.setTheme('dark') }
+// Themes
+  { id: 'theme-dark', title: 'Switch Theme: Dark', category: 'Themes', icon: Palette, perform: () => theme.setTheme('dark') },
+  { id: 'theme-amoled', title: 'Switch Theme: AMOLED', category: 'Themes', icon: Palette, perform: () => theme.setTheme('amoled') },
+  { id: 'theme-light', title: 'Switch Theme: Light', category: 'Themes', icon: Palette, perform: () => theme.setTheme('light') },
+  { id: 'theme-royal', title: 'Switch Theme: Royal', category: 'Themes', icon: Palette, perform: () => theme.setTheme('royal') },
+  { id: 'theme-crimson', title: 'Switch Theme: Crimson', category: 'Themes', icon: Palette, perform: () => theme.setTheme('crimson') },
+  { id: 'theme-arctic', title: 'Switch Theme: Arctic', category: 'Themes', icon: Palette, perform: () => theme.setTheme('arctic') },
+  { id: 'theme-forest', title: 'Switch Theme: Forest', category: 'Themes', icon: Palette, perform: () => theme.setTheme('forest') },
+  { id: 'theme-golden', title: 'Switch Theme: Golden', category: 'Themes', icon: Palette, perform: () => theme.setTheme('golden') },
+  { id: 'theme-sakura', title: 'Switch Theme: Sakura', category: 'Themes', icon: Palette, perform: () => theme.setTheme('sakura') },
   ];
 
   const filtered = commands.filter(c =>
@@ -161,7 +164,6 @@ export function CommandPalette({
             <span><kbd className="font-mono bg-[#181820] px-1.5 py-0.5 rounded text-white border border-[#232334]">↑↓</kbd> Navigate</span>
             <span><kbd className="font-mono bg-[#181820] px-1.5 py-0.5 rounded text-white border border-[#232334]">↵</kbd> Select</span>
           </div>
-          <span>Notter Command Palette v2.2</span>
         </div>
 
       </div>
