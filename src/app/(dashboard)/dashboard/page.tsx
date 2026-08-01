@@ -301,23 +301,6 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-
-        {/* Activity Stream Sidebar */}
-        <div className="p-6 rounded-2xl bg-[#121218] border border-[#232334] space-y-4 h-fit">
-          <h2 className="font-bold text-white text-sm flex items-center gap-2 border-b border-[#232334] pb-3">
-            <Activity className="w-4 h-4 text-[#7c3aed]" /> Recent Activity Stream
-          </h2>
-
-          <div className="space-y-3">
-            {recentActivity.map((act) => (
-              <div key={act.id} className="p-3 rounded-xl bg-[#181820] border border-[#232334] text-xs space-y-1">
-                <div className="font-semibold text-white">{act.text}</div>
-                <div className="text-[10px] text-[#8e8ea0] font-mono">{act.time}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
       </div>
     </div>
   );
