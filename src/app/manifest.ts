@@ -2,9 +2,9 @@ import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Notter - Living Story Bible & Writing Platform',
-    short_name: 'Notter',
-    description: 'The ultimate continuity engine, living story bible, and distraction-free writing environment for authors.',
+    name: 'NotterPad – Offline-First Novel Writing Platform',
+    short_name: 'NotterPad',
+    description: 'The distraction-free, privacy-first writing platform and Story Bible extraction engine for fiction authors.',
     start_url: '/',
     display: 'standalone',
     background_color: '#09090b',
