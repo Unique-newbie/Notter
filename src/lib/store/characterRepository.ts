@@ -101,10 +101,11 @@ export class CharacterRepository {
   }
 
   /**
-   * Cleans existing duplicate characters in a book by merging identical names.
+   * Cleans existing duplicate characters, abilities, items, and locations in a book by merging identical names.
    * @param {string} bookId - The book ID.
    */
   async cleanExistingDuplicates(bookId: string): Promise<void> {
+    // Clean Duplicate Characters
     const list = await this.getCharacters(bookId);
     const nameMap = new Map<string, Character[]>();
 
@@ -131,6 +132,81 @@ export class CharacterRepository {
         await indexedDBAdapter.save('characters', primary);
       }
     }
+
+    // Clean Duplicate Abilities
+    try {
+      const abilities = await indexedDBAdapter.getAllByBookId<any>('abilities', bookId);
+      const abiMap = new Map<string, any[]>();
+      for (const a of abilities) {
+        const key = a.name.trim().toLowerCase();
+        if (!abiMap.has(key)) abiMap.set(key, []);
+        abiMap.get(key)!.push(a);
+      }
+      for (const [, group] of abiMap.entries()) {
+        if (group.length > 1) {
+          const primary = group[0];
+          for (let i = 1; i < group.length; i++) {
+            const secondary = group[i];
+            primary.description = primary.description && secondary.description && !primary.description.includes(secondary.description)
+              ? `${primary.description}\n\n${secondary.description}`
+              : primary.description || secondary.description;
+            primary.userCharacterNames = Array.from(new Set([...(primary.userCharacterNames || []), ...(secondary.userCharacterNames || [])]));
+            await indexedDBAdapter.delete('abilities', secondary.id);
+          }
+          await indexedDBAdapter.save('abilities', primary);
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    // Clean Duplicate Items
+    try {
+      const items = await indexedDBAdapter.getAllByBookId<any>('items', bookId);
+      const itemMap = new Map<string, any[]>();
+      for (const item of items) {
+        const key = item.name.trim().toLowerCase();
+        if (!itemMap.has(key)) itemMap.set(key, []);
+        itemMap.get(key)!.push(item);
+      }
+      for (const [, group] of itemMap.entries()) {
+        if (group.length > 1) {
+          const primary = group[0];
+          for (let i = 1; i < group.length; i++) {
+            const secondary = group[i];
+            primary.description = primary.description && secondary.description && !primary.description.includes(secondary.description)
+              ? `${primary.description}\n\n${secondary.description}`
+              : primary.description || secondary.description;
+            primary.ownerCharacterName = primary.ownerCharacterName || secondary.ownerCharacterName;
+            await indexedDBAdapter.delete('items', secondary.id);
+          }
+          await indexedDBAdapter.save('items', primary);
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    // Clean Duplicate Locations
+    try {
+      const locations = await indexedDBAdapter.getAllByBookId<any>('locations', bookId);
+      const locMap = new Map<string, any[]>();
+      for (const loc of locations) {
+        const key = loc.name.trim().toLowerCase();
+        if (!locMap.has(key)) locMap.set(key, []);
+        locMap.get(key)!.push(loc);
+      }
+      for (const [, group] of locMap.entries()) {
+        if (group.length > 1) {
+          const primary = group[0];
+          for (let i = 1; i < group.length; i++) {
+            const secondary = group[i];
+            primary.summary = primary.summary && secondary.summary && !primary.summary.includes(secondary.summary)
+              ? `${primary.summary}\n\n${secondary.summary}`
+              : primary.summary || secondary.summary;
+            await indexedDBAdapter.delete('locations', secondary.id);
+          }
+          await indexedDBAdapter.save('locations', primary);
+        }
+      }
+    } catch (e) { /* ignore */ }
+
     this.notifyDataChanged();
   }
 

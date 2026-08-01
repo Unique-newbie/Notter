@@ -201,6 +201,22 @@ class StoryRepository {
   async getDialogueFacts(bookId: string): Promise<DialogueFactEntity[]> {
     return indexedDBAdapter.getAllByBookId<DialogueFactEntity>('dialogue_facts', bookId);
   }
+  async addDialogueFact(bookId: string, speaker: string, recipient: string, fact: string, factType: string): Promise<DialogueFactEntity | null> {
+    const newDf: DialogueFactEntity = {
+      id: generateUUID(),
+      bookId,
+      chapterId: '',
+      chapterNumber: 1,
+      speaker,
+      recipient,
+      fact,
+      type: (factType as any) || 'Revelation',
+      createdAt: new Date().toISOString()
+    };
+    await indexedDBAdapter.save('dialogue_facts', newDf);
+    this.notifyDataChanged();
+    return newDf;
+  }
   async getTimelineEvents(bookId: string): Promise<TimelineEvent[]> {
     const events = await indexedDBAdapter.getAllByBookId<TimelineEvent>('timeline_events', bookId);
     return events.sort((a, b) => a.chapterNumber - b.chapterNumber);
@@ -343,61 +359,116 @@ class StoryRepository {
     const draft = await indexedDBAdapter.getById<AIExtraction>('ai_extractions', extractionId);
     if (!draft || !draft.extraction) return false;
 
-    const data: any = draft.extraction;
-    const bookId = draft.bookId;
-
-    if (data.characters) {
-      for (const c of data.characters) {
-        await this.createCharacter(bookId, {
-          name: c.name,
-          aliases: c.aliases || c.alternateNames || [],
-          summary: c.summary || c.description || '',
-          status: 'Active',
-          knownFacts: c.knownFacts || c.facts || [],
-          explicitAppearanceFacts: c.explicitAppearanceFacts || c.appearance || [],
-          dynamicAttributes: c.dynamicAttributes || c.attributes || {}
-        });
-      }
-    }
-
-    if (data.abilities) {
-      for (const a of data.abilities) {
-        await this.createAbility(bookId, {
-          name: a.name,
-          description: a.description || '',
-          category: (a.category as any) || 'Magic',
-          userCharacterNames: a.userCharacterNames || a.users || []
-        });
-      }
-    }
-
-    if (data.items) {
-      for (const i of data.items) {
-        await this.createItem(bookId, {
-          name: i.name,
-          description: i.description || '',
-          type: (i.type as any) || 'Artifact',
-          ownerCharacterName: i.ownerCharacterName || i.owner || '',
-          status: 'Active'
-        });
-      }
-    }
-
-    if (data.locations) {
-      for (const l of data.locations) {
-        await this.createLocation(bookId, {
-          name: l.name,
-          summary: l.summary || l.description || '',
-          type: 'City'
-        });
-      }
-    }
+    await this.applyExtractionData(draft.bookId, draft.extraction);
 
     if (draft.chapterId) {
       await this.chapterRepo.updateChapter(draft.chapterId, { status: 'Analyzed' });
     }
 
-    await indexedDBAdapter.delete('ai_extractions', extractionId);
+    draft.status = 'Approved';
+    await indexedDBAdapter.save('ai_extractions', draft);
+    this.notifyDataChanged();
+    return true;
+  }
+
+  /**
+   * Applies structured extraction JSON data directly into the Story Bible database.
+   * Handles both camelCase and snake_case formats.
+   */
+  async applyExtractionData(bookId: string, rawData: any): Promise<boolean> {
+    if (!rawData) return false;
+    const data = rawData;
+
+    // 1. Characters
+    const chars = data.characters || data.new_characters || [];
+    for (const c of chars) {
+      const knownFacts = c.knownFacts || c.known_facts || c.facts || [];
+      const explicitAppearanceFacts = c.explicitAppearanceFacts || c.explicit_appearance_facts || c.appearance || [];
+      const dynamicAttributes = c.dynamicAttributes || c.dynamic_attributes || c.attributes || {};
+      const progressionChanges = c.progressionHistory || c.progression_changes || c.progressionChanges || [];
+
+      await this.createCharacter(bookId, {
+        name: c.name,
+        aliases: c.aliases || c.alternateNames || c.alternate_names || [],
+        summary: c.summary || c.description || '',
+        status: c.status || 'Active',
+        occupation: c.occupation || c.job || undefined,
+        currentLocation: c.location || c.currentLocation || c.current_location || undefined,
+        emotionalState: c.emotional_state || c.emotionalState || undefined,
+        clothing: c.clothing || undefined,
+        goals: c.goals || undefined,
+        knownFacts,
+        explicitAppearanceFacts,
+        dynamicAttributes,
+        progressionHistory: progressionChanges.map((p: any) => ({
+          id: generateUUID(),
+          chapterNumber: p.chapterNumber || p.chapter_number || 1,
+          attribute: p.attribute,
+          oldValue: p.oldValue || p.old_value || '',
+          newValue: p.newValue || p.new_value || '',
+          reason: p.reason || ''
+        }))
+      });
+    }
+
+    // 2. Abilities
+    const abilities = data.abilities || [];
+    for (const a of abilities) {
+      await this.createAbility(bookId, {
+        name: a.name,
+        description: a.description || '',
+        category: (a.category as any) || 'Active',
+        userCharacterNames: a.userCharacterNames || a.users || []
+      });
+    }
+
+    // 3. Items
+    const items = data.items || [];
+    for (const i of items) {
+      await this.createItem(bookId, {
+        name: i.name,
+        description: i.description || '',
+        type: (i.type as any) || 'Artifact',
+        ownerCharacterName: i.ownerCharacterName || i.owner || '',
+        previousOwnerName: i.previousOwnerName || i.previous_owner || undefined,
+        status: i.status || 'Active'
+      });
+    }
+
+    // 4. Locations
+    const locations = data.locations || [];
+    for (const l of locations) {
+      await this.createLocation(bookId, {
+        name: l.name,
+        summary: l.summary || l.description || '',
+        type: l.type || 'Residence'
+      });
+    }
+
+    // 5. Relationships
+    const relationships = data.relationships || data.relationship_changes || [];
+    for (const r of relationships) {
+      const char1 = r.character1Name || r.character1 || r.char1 || '';
+      const char2 = r.character2Name || r.character2 || r.char2 || '';
+      const relType = r.relationType || r.relation_type || r.type || 'Friends';
+      const desc = r.description || '';
+      if (char1 && char2) {
+        await this.addRelationship(bookId, char1, char2, relType, desc);
+      }
+    }
+
+    // 6. Dialogue Facts
+    const dialogueFacts = data.dialogueFacts || data.dialogue_facts || [];
+    for (const df of dialogueFacts) {
+      const speaker = df.speaker || '';
+      const recipient = df.recipient || '';
+      const fact = df.fact || '';
+      const factType = df.factType || df.fact_type || df.type || 'Revelation';
+      if (speaker && fact) {
+        await this.addDialogueFact(bookId, speaker, recipient, fact, factType);
+      }
+    }
+
     this.notifyDataChanged();
     return true;
   }

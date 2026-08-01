@@ -169,16 +169,20 @@ export function validateAndCleanExtraction(
       seenCharNames.add(normalized);
       validatedCharacters.push({
         name,
-        aliases: sanitizeStringArray(char.aliases),
-        summary: typeof char.summary === 'string' ? char.summary.trim() : '',
+        aliases: sanitizeStringArray(char.aliases || char.alternateNames || char.alternate_names),
+        summary: typeof char.summary === 'string' ? char.summary.trim() : (typeof char.description === 'string' ? char.description.trim() : ''),
         status: ['Active', 'Deceased', 'Missing', 'Unknown'].includes(char.status) ? char.status : 'Active',
-        occupation: sanitizeOptionalString(char.occupation),
-        location: sanitizeOptionalString(char.location),
-        emotional_state: sanitizeOptionalString(char.emotional_state),
-        physical_injuries: sanitizeOptionalString(char.physical_injuries),
-        physical_changes: sanitizeOptionalString(char.physical_changes),
+        occupation: sanitizeOptionalString(char.occupation || char.job),
+        location: sanitizeOptionalString(char.location || char.currentLocation || char.current_location),
+        emotional_state: sanitizeOptionalString(char.emotional_state || char.emotionalState),
+        physical_injuries: sanitizeOptionalString(char.physical_injuries || char.physicalInjuries),
+        physical_changes: sanitizeOptionalString(char.physical_changes || char.physicalChanges),
         clothing: sanitizeOptionalString(char.clothing),
         goals: sanitizeOptionalString(char.goals),
+        knownFacts: sanitizeStringArray(char.knownFacts || char.known_facts || char.facts),
+        explicitAppearanceFacts: sanitizeStringArray(char.explicitAppearanceFacts || char.explicit_appearance_facts || char.appearance),
+        dynamicAttributes: char.dynamicAttributes || char.dynamic_attributes || char.attributes || {},
+        progressionHistory: Array.isArray(char.progressionHistory || char.progression_changes) ? (char.progressionHistory || char.progression_changes) : [],
         secrets_revealed: sanitizeStringArray(char.secrets_revealed),
         promises_made: sanitizeStringArray(char.promises_made),
         promises_broken: sanitizeStringArray(char.promises_broken),
@@ -302,17 +306,18 @@ export function validateAndCleanExtraction(
 
   // 8. Relationships
   const validatedRelationships: any[] = [];
-  if (Array.isArray(parsed.relationship_changes)) {
-    for (const rc of parsed.relationship_changes) {
+  const relList = parsed.relationships || parsed.relationship_changes || [];
+  if (Array.isArray(relList)) {
+    for (const rc of relList) {
       if (!rc || typeof rc !== 'object') continue;
-      const c1 = typeof rc.character1 === 'string' ? rc.character1.trim() : '';
-      const c2 = typeof rc.character2 === 'string' ? rc.character2.trim() : '';
+      const c1 = typeof (rc.character1 || rc.character1Name || rc.char1) === 'string' ? (rc.character1 || rc.character1Name || rc.char1).trim() : '';
+      const c2 = typeof (rc.character2 || rc.character2Name || rc.char2) === 'string' ? (rc.character2 || rc.character2Name || rc.char2).trim() : '';
       if (!c1 || !c2) continue;
 
       validatedRelationships.push({
         character1: c1,
         character2: c2,
-        relationType: typeof rc.relationType === 'string' ? rc.relationType.trim() : 'Allies',
+        relationType: typeof (rc.relation_type || rc.relationType || rc.type) === 'string' ? (rc.relation_type || rc.relationType || rc.type).trim() : 'Allies',
         description: typeof rc.description === 'string' ? rc.description.trim() : ''
       });
     }
@@ -320,15 +325,17 @@ export function validateAndCleanExtraction(
 
   // 9. Dialogue Facts
   const validatedDialogueFacts: any[] = [];
-  if (Array.isArray(parsed.dialogue_facts)) {
-    for (const df of parsed.dialogue_facts) {
+  const dfList = parsed.dialogue_facts || parsed.dialogueFacts || [];
+  if (Array.isArray(dfList)) {
+    for (const df of dfList) {
       if (!df || typeof df !== 'object') continue;
       const speaker = typeof df.speaker === 'string' ? df.speaker.trim() : '';
       const fact = typeof df.fact === 'string' ? df.fact.trim() : '';
       if (!speaker || !fact) continue;
 
+      const rawType = df.fact_type || df.factType || df.type || 'Revelation';
       const validTypes = ['Promise', 'Threat', 'Lie', 'Confession', 'Secret', 'Agreement', 'Decision', 'Order', 'Oath', 'Revelation'];
-      const factType = validTypes.includes(df.type) ? df.type : 'Revelation';
+      const factType = validTypes.includes(rawType) ? rawType : 'Revelation';
 
       validatedDialogueFacts.push({
         speaker,
