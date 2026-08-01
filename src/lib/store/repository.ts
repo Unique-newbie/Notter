@@ -69,6 +69,7 @@ class StoryRepository {
   async createCharacter(bookId: string, char: Partial<Character> & { name: string }): Promise<Character | null> { return this.charRepo.createCharacter(bookId, char); }
   async updateCharacter(id: string, updates: Partial<Character>): Promise<boolean> { return this.charRepo.updateCharacter(id, updates); }
   async deleteCharacter(id: string): Promise<boolean> { return this.charRepo.deleteCharacter(id); }
+  async cleanExistingDuplicates(bookId: string): Promise<void> { return this.charRepo.cleanExistingDuplicates(bookId); }
 
   // ==================== ABILITY METHODS ====================
   async getAbilities(bookId: string): Promise<Ability[]> {

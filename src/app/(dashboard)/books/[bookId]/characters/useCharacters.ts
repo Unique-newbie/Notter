@@ -39,6 +39,7 @@ export function useCharacters(bookId: string, initialCharId: string | null) {
   const [newTag, setNewTag] = useState('');
 
   const refreshCharacters = useCallback(async () => {
+    await repository.cleanExistingDuplicates(bookId);
     const list = await repository.getCharacters(bookId);
     setCharacters(list);
     setAbilities(await repository.getAbilities(bookId));
