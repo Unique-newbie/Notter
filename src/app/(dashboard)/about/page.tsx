@@ -13,7 +13,7 @@ export default function AboutPage() {
       <div className="p-8 rounded-2xl bg-gradient-to-r from-[#121218] via-[#1a102f] to-[#121218] border border-[#7c3aed]/40 shadow-purple flex items-center justify-between">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7c3aed]/20 border border-[#7c3aed]/40 text-[#a78bfa] text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5" /> Notter Release v2.2.0 (Offline First)
+            <Sparkles className="w-3.5 h-3.5" /> Notter Release v2.2.0
           </div>
           <h1 className="text-3xl font-extrabold text-white">Notter – Fiction Knowledge Engine</h1>
           <p className="text-xs text-[#a1a1aa] max-w-xl leading-relaxed">
