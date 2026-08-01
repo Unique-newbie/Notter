@@ -23,84 +23,148 @@ class StoryRepository {
   // ==================== BOOK METHODS ====================
 
   async getBooks(): Promise<Book[]> {
-    const { data, error } = await this.supabase
-      .from('books')
-      .select('*')
-      .order('created_at', { ascending: false });
+    let dbBooks: Book[] = [];
+    try {
+      const { data, error } = await this.supabase
+        .from('books')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error || !data) return [];
+      if (!error && data) {
+        let favIds: string[] = [];
+        if (typeof window !== 'undefined') {
+          try { favIds = JSON.parse(localStorage.getItem('notter_fav_books') || '[]'); } catch (e) {}
+        }
 
-    let favIds: string[] = [];
-    if (typeof window !== 'undefined') {
-      try { favIds = JSON.parse(localStorage.getItem('notter_fav_books') || '[]'); } catch (e) {}
+        dbBooks = data.map(b => ({
+          id: b.id,
+          title: b.title,
+          description: b.description || '',
+          coverColor: b.cover_color || '#7C3AED',
+          coverUrl: b.cover_url || undefined,
+          genre: b.genre || 'Fantasy',
+          status: b.status || 'Drafting',
+          isFavorite: favIds.includes(b.id),
+          createdAt: b.created_at,
+          updatedAt: b.updated_at
+        }));
+      }
+    } catch (e) {
+      console.warn('[Repository] Supabase getBooks query bypass:', e);
     }
 
-    return data.map(b => ({
-      id: b.id,
-      title: b.title,
-      description: b.description || '',
-      coverColor: b.cover_color || '#7C3AED',
-      coverUrl: b.cover_url || undefined,
-      genre: b.genre || 'Fantasy',
-      status: b.status || 'Drafting',
-      isFavorite: favIds.includes(b.id),
-      createdAt: b.created_at,
-      updatedAt: b.updated_at
-    }));
+    let localBooks: Book[] = [];
+    if (typeof window !== 'undefined') {
+      try {
+        localBooks = JSON.parse(localStorage.getItem('notter_local_books') || '[]');
+      } catch (e) {}
+    }
+
+    // Merge DB books and local fallback books cleanly
+    const combinedMap = new Map<string, Book>();
+    dbBooks.forEach(b => combinedMap.set(b.id, b));
+    localBooks.forEach(b => { if (!combinedMap.has(b.id)) combinedMap.set(b.id, b); });
+
+    return Array.from(combinedMap.values());
   }
 
   async getBook(id: string): Promise<Book | undefined> {
-    const { data, error } = await this.supabase
-      .from('books')
-      .select('*')
-      .eq('id', id)
-      .single();
+    try {
+      const { data, error } = await this.supabase
+        .from('books')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-    if (error || !data) return undefined;
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description || '',
-      coverColor: data.cover_color || '#7C3AED',
-      coverUrl: data.cover_url || undefined,
-      genre: data.genre || 'Fantasy',
-      status: data.status || 'Drafting',
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    };
+      if (!error && data) {
+        return {
+          id: data.id,
+          title: data.title,
+          description: data.description || '',
+          coverColor: data.cover_color || '#7C3AED',
+          coverUrl: data.cover_url || undefined,
+          genre: data.genre || 'Fantasy',
+          status: data.status || 'Drafting',
+          createdAt: data.created_at,
+          updatedAt: data.updated_at
+        };
+      }
+    } catch (e) {}
+
+    // Check local fallback
+    if (typeof window !== 'undefined') {
+      const localBooks: Book[] = JSON.parse(localStorage.getItem('notter_local_books') || '[]');
+      const match = localBooks.find(b => b.id === id);
+      if (match) return match;
+    }
+
+    return undefined;
   }
 
   async createBook(book: Omit<Book, 'id' | 'createdAt' | 'updatedAt' | 'chapterCount' | 'totalWordCount'>): Promise<Book | null> {
-    const { data: { user } } = await this.supabase.auth.getUser();
-    if (!user) return null;
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
 
-    const { data, error } = await this.supabase
-      .from('books')
-      .insert({
-        user_id: user.id,
+      const insertPayload: any = {
         title: book.title,
         description: book.description || '',
         cover_color: book.coverColor || '#7C3AED',
         cover_url: book.coverUrl || null,
         genre: book.genre || 'Fantasy',
         status: book.status || 'Drafting'
-      })
-      .select('*')
-      .single();
+      };
 
-    if (error || !data) return null;
-    this.notifyDataChanged();
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description,
-      coverColor: data.cover_color,
-      coverUrl: data.cover_url || undefined,
-      genre: data.genre,
-      status: data.status,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
+      if (user) {
+        insertPayload.user_id = user.id;
+      }
+
+      const { data, error } = await this.supabase
+        .from('books')
+        .insert(insertPayload)
+        .select('*')
+        .single();
+
+      if (!error && data) {
+        this.notifyDataChanged();
+        return {
+          id: data.id,
+          title: data.title,
+          description: data.description,
+          coverColor: data.cover_color,
+          coverUrl: data.cover_url || undefined,
+          genre: data.genre,
+          status: data.status,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at
+        };
+      } else {
+        console.warn('[Repository] Supabase insert failed, storing in local fallback:', error?.message);
+      }
+    } catch (err) {
+      console.warn('[Repository] createBook exception, storing in local fallback:', err);
+    }
+
+    // Local Storage Fallback
+    const localId = `book-local-${Date.now()}`;
+    const newLocalBook: Book = {
+      id: localId,
+      title: book.title,
+      description: book.description || '',
+      coverColor: book.coverColor || '#7C3AED',
+      coverUrl: book.coverUrl,
+      genre: book.genre || 'Fantasy',
+      status: book.status || 'Drafting',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
+
+    if (typeof window !== 'undefined') {
+      const stored = JSON.parse(localStorage.getItem('notter_local_books') || '[]');
+      localStorage.setItem('notter_local_books', JSON.stringify([newLocalBook, ...stored]));
+    }
+
+    this.notifyDataChanged();
+    return newLocalBook;
   }
 
   async updateBook(id: string, updates: Partial<Book>): Promise<boolean> {
