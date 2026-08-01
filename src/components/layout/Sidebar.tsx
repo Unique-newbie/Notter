@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, LayoutDashboard, Settings, Sparkles, ChevronLeft, ChevronRight, ShieldAlert, GitBranch, Layers, LogOut, Users, Package, MapPin, Shield, User, Flame, HelpCircle, Info, Merge } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Settings, Sparkles, ChevronLeft, ChevronRight, ShieldAlert, GitBranch, Layers, LogOut, Users, Package, MapPin, Shield, User, Flame, HelpCircle, Info, Merge, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/AuthContext';
 
@@ -38,7 +38,9 @@ export function Sidebar({ collapsed, onToggleCollapse, activeBookId }: SidebarPr
     { label: 'Abilities', href: `/books/${currentBookId}/abilities`, icon: Shield },
     { label: 'Items & Relics', href: `/books/${currentBookId}/items`, icon: Package },
     { label: 'Locations', href: `/books/${currentBookId}/locations`, icon: MapPin },
-    { label: 'Visual Timeline', href: `/books/${currentBookId}/timeline`, icon: GitBranch },
+    { label: 'Interactive Graph', href: `/books/${currentBookId}/graph`, icon: GitBranch },
+    { label: 'AI Playground', href: `/books/${currentBookId}/playground`, icon: Sparkles },
+    { label: 'Manuscript Reader', href: `/books/${currentBookId}/read`, icon: Eye },
     { label: 'Consistency Audit', href: `/books/${currentBookId}/audit`, icon: ShieldAlert },
     { label: 'Duplicate Review', href: `/books/${currentBookId}/duplicates`, icon: Merge },
   ];

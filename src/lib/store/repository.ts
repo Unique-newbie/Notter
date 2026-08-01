@@ -280,6 +280,51 @@ class StoryRepository {
     }));
   }
 
+  async getHistoricalStoryState(bookId: string, maxChapterNumber: number): Promise<{
+    characters: Character[];
+    abilities: Ability[];
+    items: Item[];
+  }> {
+    const allChars = await this.getCharacters(bookId);
+    const allAbilities = await this.getAbilities(bookId);
+    const allItems = await this.getItems(bookId);
+
+    // Reconstruct characters up to maxChapterNumber
+    const historicalChars = allChars.map(char => {
+      const validApps = (char.chapterAppearances || []).filter(a => a.chapterNumber <= maxChapterNumber);
+      if (validApps.length === 0 && (char.history || []).length > 0) {
+        const hasEarlyHistory = char.history?.some(h => h.chapterNumber <= maxChapterNumber);
+        if (!hasEarlyHistory) return null;
+      }
+
+      // Reconstruct dynamic attributes up to maxChapterNumber
+      const validProgression = (char.progressionHistory || []).filter(p => p.chapterNumber <= maxChapterNumber);
+      const remappedAttrs: Record<string, string | number> = { ...(char.dynamicAttributes || {}) };
+
+      // Apply progression overrides up to maxChapterNumber
+      validProgression.forEach(p => {
+        remappedAttrs[p.attribute] = p.newValue;
+      });
+
+      const lastApp = validApps.length > 0 ? validApps[validApps.length - 1] : null;
+
+      return {
+        ...char,
+        currentLocation: lastApp?.location || char.currentLocation,
+        status: (lastApp?.statusInChapter as any) || char.status,
+        goals: lastApp?.goals || char.goals,
+        dynamicAttributes: remappedAttrs,
+        chapterAppearances: validApps
+      };
+    }).filter(Boolean) as Character[];
+
+    return {
+      characters: historicalChars,
+      abilities: allAbilities,
+      items: allItems
+    };
+  }
+
   async getCharacter(id: string): Promise<Character | undefined> {
     const { data, error } = await this.supabase.from('characters').select('*').eq('id', id).single();
     if (error || !data) return undefined;
