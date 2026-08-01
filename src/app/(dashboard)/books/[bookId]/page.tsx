@@ -65,55 +65,67 @@ export default function BookOverviewPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Book Header Banner */}
-      <div className="p-8 rounded-2xl bg-[#121218] border border-[#232334] flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl relative overflow-hidden">
-        <div className="flex items-start gap-4">
-          {book.coverUrl ? (
-            <img
-              src={book.coverUrl}
-              alt={book.title}
-              className="w-16 h-20 rounded-xl object-cover border border-[#232334] shadow-purple shrink-0"
-            />
-          ) : (
-            <div
-              className="w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center text-white font-extrabold text-xl shadow-purple"
-              style={{ backgroundColor: book.coverColor }}
+      <div className="p-8 rounded-2xl bg-[#121218] border border-[#232334] space-y-6 shadow-xl relative overflow-hidden">
+        {/* Top Header Row */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
+            {book.coverUrl ? (
+              <img
+                src={book.coverUrl}
+                alt={book.title}
+                className="w-20 h-28 rounded-xl object-cover border border-[#232334] shadow-purple shrink-0"
+              />
+            ) : (
+              <div
+                className="w-20 h-28 rounded-xl shrink-0 flex items-center justify-center text-white font-extrabold text-2xl shadow-purple"
+                style={{ backgroundColor: book.coverColor }}
+              >
+                {book.title.substring(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#a78bfa]">{book.genre}</span>
+                <span className="text-xs text-[#3f3f56]">•</span>
+                <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase bg-[#1e1e2a] text-emerald-400 border border-[#232334]">
+                  {book.status}
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">{book.title}</h1>
+            </div>
+          </div>
+
+          {/* Action Buttons Row */}
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <Link
+              href={`/books/${bookId}/chapters`}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#7c3aed] text-white font-bold text-xs hover:bg-[#6d28d9] transition-all shadow-purple"
             >
-              {book.title.substring(0, 2).toUpperCase()}
-            </div>
-          )}
-          <div>
-            <div className="flex items-center gap-2.5 mb-1">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#8e8ea0]">{book.genre}</span>
-              <span className="text-xs text-[#52526b]">----------------</span>
-              <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase bg-[#1e1e2a] text-[#a78bfa] border border-[#232334]">
-                {book.status}
-              </span>
-            </div>
-            <h1 className="text-2xl font-extrabold text-white">{book.title}</h1>
-            <p className="text-xs text-[#a1a1aa] mt-1 max-w-2xl leading-relaxed">{book.description || 'No description provided.'}</p>
+              <FileText className="w-4 h-4" /> Open Chapter Manager
+            </Link>
+            <Link
+              href={`/books/${bookId}/timeline`}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1e1e2a] border border-[#232334] text-white font-semibold text-xs hover:bg-[#272738] transition-all"
+            >
+              <GitBranch className="w-4 h-4 text-[#a78bfa]" /> Visual Timeline
+            </Link>
+            <Link
+              href={`/books/${bookId}/duplicates`}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold text-xs hover:bg-amber-500/20 transition-all"
+            >
+              Duplicate Review Center
+            </Link>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <Link
-            href={`/books/${bookId}/chapters`}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#7c3aed] text-white font-bold text-xs hover:bg-[#6d28d9] transition-all shadow-purple"
-          >
-            <FileText className="w-4 h-4" /> Open Chapter Manager
-          </Link>
-          <Link
-            href={`/books/${bookId}/timeline`}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1e1e2a] border border-[#232334] text-white font-semibold text-xs hover:bg-[#272738] transition-all"
-          >
-            <GitBranch className="w-4 h-4 text-[#a78bfa]" /> Visual Timeline
-          </Link>
-          <Link
-            href={`/books/${bookId}/duplicates`}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold text-xs hover:bg-amber-500/20 transition-all"
-          >
-            Duplicate Review Center
-          </Link>
-        </div>
+        {/* Synopsis / Description Row */}
+        {book.description && (
+          <div className="pt-4 border-t border-[#232334]">
+            <p className="text-xs text-[#a1a1aa] leading-relaxed max-w-5xl line-clamp-3">
+              {book.description}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Metrics Row */}
