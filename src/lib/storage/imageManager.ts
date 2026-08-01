@@ -105,16 +105,19 @@ export async function uploadAndReplaceImage(
     const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(uploadData.path);
     const newPublicUrl = publicUrlData.publicUrl;
 
-    // Delete old image file from Supabase Storage if present
+    // Delete old image file from Supabase Storage if present (safeguarded)
     if (oldImageUrl && oldImageUrl.includes(bucketName)) {
       try {
         const parts = oldImageUrl.split(`${bucketName}/`);
         if (parts.length > 1) {
           const oldPath = parts[1];
-          await supabase.storage.from(bucketName).remove([oldPath]);
+          const { error: removeErr } = await supabase.storage.from(bucketName).remove([oldPath]);
+          if (removeErr) {
+            console.info(`[Supabase Storage] Note: old file cleanup bypassed:`, removeErr.message);
+          }
         }
       } catch (cleanupErr) {
-        console.warn(`[Supabase Storage] Old image cleanup note:`, cleanupErr);
+        console.info(`[Supabase Storage] Note: old file cleanup bypassed:`, cleanupErr);
       }
     }
 

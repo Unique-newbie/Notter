@@ -177,6 +177,23 @@ export function SprintModePad({
   }, [isOpen, fullscreenExited, bookId, chapterId, chapterTitle, chapterNumber, initialContent, goalType, goalTarget, wordsBefore]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      sprintStore.saveActiveSnapshot({
+        sessionId: `sprint-${startTimeRef.current}`,
+        bookId,
+        chapterId,
+        chapterTitle,
+        chapterNumber,
+        initialContent,
+        currentContent: contentRef.current,
+        goalType,
+        goalTarget,
+        startTime: new Date(startTimeRef.current).toISOString(),
+        lastUpdated: new Date().toISOString()
+      });
+      return;
+    }
     lastKeyTimeRef.current = Date.now();
     if (e.key === 'Backspace' || e.key === 'Delete') {
       setDeleteCount(d => d + 1);

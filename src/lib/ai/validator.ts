@@ -88,11 +88,21 @@ export function validateAndCleanExtraction(
   try {
     parsed = JSON.parse(cleaned);
   } catch (err: any) {
-    return {
-      valid: false,
-      errors: [`AI response is not valid JSON: ${err.message}. Raw output contained syntax errors.`],
-      warnings: []
-    };
+    // Attempt basic structural repair for truncated trailing JSON
+    try {
+      let repaired = cleaned.trim();
+      if (!repaired.endsWith('}')) {
+        repaired += '}';
+      }
+      parsed = JSON.parse(repaired);
+      warnings.push('Repaired trailing JSON brackets automatically.');
+    } catch (repairErr) {
+      return {
+        valid: false,
+        errors: [`AI response is not valid JSON: ${err.message}. Raw output contained syntax errors.`],
+        warnings: []
+      };
+    }
   }
 
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {

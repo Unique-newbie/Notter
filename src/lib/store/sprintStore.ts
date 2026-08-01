@@ -74,8 +74,14 @@ class SprintStore {
   saveSession(session: SprintSession) {
     if (typeof window === 'undefined') return;
     const existing = this.getSessions();
-    const updated = [session, ...existing];
-    localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(updated));
+    const updated = [session, ...existing].slice(0, 30);
+    try {
+      localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(updated));
+    } catch (e) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(updated.slice(0, 15)));
+      } catch (err) {}
+    }
     this.clearActiveSnapshot();
     this.updateStreakAndAchievements(session, updated);
   }

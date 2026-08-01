@@ -52,15 +52,24 @@ export default function ChaptersPage() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [currentDraft, setCurrentDraft] = useState<AIExtraction | null>(null);
 
-  const selectChapter = useCallback((chap: Chapter) => {
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+  const selectChapter = useCallback(async (chap: Chapter) => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      if (activeChapter && loadedChapterIdRef.current === activeChapter.id) {
+        await repository.updateChapter(activeChapter.id, {
+          title,
+          chapterNumber,
+          content
+        });
+      }
+    }
     loadedChapterIdRef.current = chap.id;
     setActiveChapter(chap);
     setTitle(chap.title);
     setChapterNumber(chap.chapterNumber);
     setContent(chap.content);
     setSaveStatus('saved');
-  }, []);
+  }, [activeChapter, title, chapterNumber, content]);
 
   const refreshChapters = useCallback(async (targetChapterId?: string) => {
     const list = await repository.getChapters(bookId);
@@ -216,7 +225,8 @@ export default function ChaptersPage() {
 
     for (let i = 0; i < unprocessed.length; i++) {
       const chap = unprocessed[i];
-      setBatchProgress(`Processing Chapter ${chap.chapterNumber} (${i + 1}/${unprocessed.length})...`);
+      const percent = Math.round(((i + 1) / unprocessed.length) * 100);
+      setBatchProgress(`Processing Chapter ${chap.chapterNumber} (${i + 1}/${unprocessed.length} - ${percent}%)...`);
       await handleRunAIAnalysis(chap);
     }
 

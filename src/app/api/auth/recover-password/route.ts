@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 
+// Simple in-memory rate limiter per IP / Email
+const rateLimitMap = new Map<string, { count: number; expiresAt: number }>();
+
+function checkRateLimit(key: string, maxAttempts = 5, windowMs = 15 * 60 * 1000): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+
+  if (!entry || now > entry.expiresAt) {
+    rateLimitMap.set(key, { count: 1, expiresAt: now + windowMs });
+    return true;
+  }
+
+  if (entry.count >= maxAttempts) {
+    return false;
+  }
+
+  entry.count += 1;
+  return true;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { email, newPassword, recovery } = await req.json();
@@ -9,18 +29,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
+    const rateKey = `recover_${ip}_${email.toLowerCase()}`;
+
+    if (!checkRateLimit(rateKey)) {
+      return NextResponse.json({
+        error: 'Too many recovery attempts. Please wait 15 minutes before trying again.'
+      }, { status: 429 });
+    }
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
     const supabaseAdmin = createAdminClient(supabaseUrl, supabaseServiceKey);
 
-    // 1. Get user profile
-    const { data: profiles, error: profileErr } = await supabaseAdmin
-      .from('user_profiles')
-      .select('*, auth_users:user_id(*)')
-      .limit(50);
-
-    // Find profile matching email
+    // 1. Find profile matching email
     const { data: users, error: userErr } = await supabaseAdmin.auth.admin.listUsers();
     if (userErr || !users.users) {
       return NextResponse.json({ error: 'User lookup failed' }, { status: 404 });
@@ -64,8 +87,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: updateErr.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: 'Password updated successfully' });
-
+    return NextResponse.json({ success: true, message: 'Password reset successfully. You can now login with your new password.' });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
   }

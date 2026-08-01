@@ -123,7 +123,7 @@ export default function GuildsPage() {
 
               <button
                 onClick={() => handleToggleGuild(g.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                   g.isJoined
                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                     : 'bg-[#181820] border border-[#232334] text-white hover:bg-[#7c3aed] shadow-purple'
