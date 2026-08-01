@@ -2,11 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { SYSTEM_EXTRACTION_PROMPT } from '@/lib/ai/prompt';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { createClient } from '@/lib/supabase/client';
+import { indexedDBAdapter } from '@/lib/storage/indexedDBAdapter';
 import {
   Key, Sparkles, Plus, Trash2, CheckCircle2, AlertTriangle, ShieldCheck,
-  Server, Copy, Check, Lock, User, RefreshCw, Layers
+  Server, Copy, Check, Lock, RefreshCw, Layers, Download, Upload, HardDrive
 } from 'lucide-react';
 
 interface ApiKeyRecord {
@@ -32,9 +31,6 @@ const PROVIDERS = [
 ];
 
 export default function SettingsPage() {
-  const { user, logout } = useAuth();
-  const supabase = createClient();
-
   const [apiKeys, setApiKeys] = useState<ApiKeyRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
@@ -47,43 +43,25 @@ export default function SettingsPage() {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [modelInput, setModelInput] = useState('gemini-1.5-flash');
   const [baseUrlInput, setBaseUrlInput] = useState('');
-  const [testResult, setTestResult] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
 
   const loadApiKeys = async () => {
     setLoading(true);
     let loadedKeys: ApiKeyRecord[] = [];
-
-    if (user) {
-      try {
-        const { data, error } = await supabase
-          .from('user_api_keys')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (!error && data && data.length > 0) {
-          loadedKeys = data;
-        }
-      } catch (err) {
-        console.warn('Supabase fetch error, falling back to localStorage:', err);
-      }
-    }
-
-    if (loadedKeys.length === 0 && typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('notter_byok_keys');
       if (stored) {
         try { loadedKeys = JSON.parse(stored); } catch (e) {}
       }
     }
-
     setApiKeys(loadedKeys);
     setLoading(false);
   };
 
   useEffect(() => {
     loadApiKeys();
-  }, [user]);
+  }, []);
 
   const showSuccess = (msg: string) => {
     setToast(msg);
@@ -95,214 +73,166 @@ export default function SettingsPage() {
     setTimeout(() => setErrorToast(''), 4000);
   };
 
-  const handleProviderSelect = (pid: string) => {
-    setProviderId(pid);
-    const prov = PROVIDERS.find(p => p.id === pid);
-    if (prov) {
-      setKeyName(`My ${prov.name}`);
-      setModelInput(prov.defaultModel);
-      if (pid === 'ollama') setBaseUrlInput('http://localhost:11434/v1');
-      else if (pid === 'lmstudio') setBaseUrlInput('http://localhost:1234/v1');
-      else setBaseUrlInput('');
-    }
-  };
-
-  const handleTestConnection = async () => {
-    setTesting(true);
-    setTestResult(null);
-    try {
-      const res = await fetch('/api/analyze-chapter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          providerId,
-          apiKey: apiKeyInput,
-          model: modelInput,
-          baseUrl: baseUrlInput,
-          chapterText: 'Test chapter content to verify connection.'
-        })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setTestResult('Connection Successful! API Provider responded cleanly.');
-      } else {
-        setTestResult(`Connection Error: ${data.error || 'Failed to connect'}`);
-      }
-    } catch (err: any) {
-      setTestResult(`Connection Failed: ${err.message}`);
-    }
-    setTesting(false);
-  };
-
-  const handleSaveKey = async () => {
-    if (!apiKeyInput && providerId !== 'ollama' && providerId !== 'lmstudio') {
-      showError('Please enter an API key');
+  const handleSaveKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!apiKeyInput.trim() && providerId !== 'ollama' && providerId !== 'lmstudio') {
+      showError('Please enter a valid API Key.');
       return;
     }
 
-    const isFirstKey = apiKeys.length === 0;
-    const newRecord: ApiKeyRecord = {
-      id: `key-${Date.now()}`,
+    const newKeyRecord: ApiKeyRecord = {
+      id: `key_${Date.now()}`,
       provider_id: providerId,
-      name: keyName.trim() || 'My API Key',
-      api_key_encrypted: apiKeyInput || 'local-key',
-      default_model: modelInput.trim() || 'gemini-1.5-flash',
+      name: keyName.trim() || `${providerId.toUpperCase()} Key`,
+      api_key_encrypted: apiKeyInput.trim(),
+      default_model: modelInput.trim() || 'default',
       base_url: baseUrlInput.trim() || undefined,
-      is_default: isFirstKey
+      is_default: apiKeys.length === 0
     };
 
-    if (user) {
-      try {
-        const { data, error } = await supabase.from('user_api_keys').insert({
-          user_id: user.id,
-          provider_id: providerId,
-          name: newRecord.name,
-          api_key_encrypted: newRecord.api_key_encrypted,
-          default_model: newRecord.default_model,
-          base_url: newRecord.base_url || null,
-          is_default: isFirstKey
-        }).select('*').single();
-
-        if (!error && data) {
-          newRecord.id = data.id;
-        }
-      } catch (err) {
-        console.warn('Could not save key to Supabase DB, saving to localStorage:', err);
-      }
-    }
-
-    // Always update local state & localStorage
-    const updated = [newRecord, ...apiKeys.filter(k => k.id !== newRecord.id)];
-    if (isFirstKey) {
-      updated.forEach(k => { k.is_default = (k.id === newRecord.id); });
-    }
-    setApiKeys(updated);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('notter_byok_keys', JSON.stringify(updated));
-    }
-
-    showSuccess(`Saved ${newRecord.name}`);
+    const nextKeys = [newKeyRecord, ...apiKeys];
+    localStorage.setItem('notter_byok_keys', JSON.stringify(nextKeys));
+    setApiKeys(nextKeys);
     setShowAddForm(false);
     setApiKeyInput('');
-    setTestResult(null);
+    showSuccess('API Key saved locally!');
   };
 
-  const handleSetDefaultKey = async (keyId: string) => {
-    if (user) {
-      try {
-        await supabase.from('user_api_keys').update({ is_default: false }).eq('user_id', user.id);
-        await supabase.from('user_api_keys').update({ is_default: true }).eq('id', keyId);
-      } catch (err) {
-        console.warn('Supabase update default key error:', err);
-      }
-    }
-
-    const updated = apiKeys.map(k => ({
-      ...k,
-      is_default: k.id === keyId
-    }));
-    setApiKeys(updated);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('notter_byok_keys', JSON.stringify(updated));
-    }
-
-    showSuccess('Updated default AI Provider');
+  const handleDeleteKey = (id: string) => {
+    const nextKeys = apiKeys.filter(k => k.id !== id);
+    localStorage.setItem('notter_byok_keys', JSON.stringify(nextKeys));
+    setApiKeys(nextKeys);
+    showSuccess('Key removed');
   };
 
-  const handleDeleteKey = async (keyId: string) => {
-    if (confirm('Delete this API Key configuration?')) {
-      if (user) {
-        try {
-          await supabase.from('user_api_keys').delete().eq('id', keyId);
-        } catch (err) {
-          console.warn('Supabase delete key error:', err);
+  // Workspace Export & Import Handlers
+  const handleExportWorkspace = async () => {
+    try {
+      const jsonStr = await indexedDBAdapter.exportFullWorkspaceJSON();
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `notter-workspace-backup-${new Date().toISOString().substring(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showSuccess('Full workspace exported to JSON!');
+    } catch (e) {
+      showError('Export failed.');
+    }
+  };
+
+  const handleImportWorkspace = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const content = evt.target?.result as string;
+      if (content) {
+        const success = await indexedDBAdapter.importFullWorkspaceJSON(content);
+        if (success) {
+          showSuccess('Workspace imported successfully!');
+          window.location.reload();
+        } else {
+          showError('Invalid backup JSON file.');
         }
       }
-      const updated = apiKeys.filter(k => k.id !== keyId);
-      setApiKeys(updated);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('notter_byok_keys', JSON.stringify(updated));
-      }
-      showSuccess('API Key deleted');
-    }
+    };
+    reader.readAsText(file);
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-12">
-      {/* Toast Notification */}
-      {toast && (
-        <div className="fixed top-6 right-6 z-50 px-5 py-3 rounded-xl bg-[#7c3aed] text-white text-sm font-semibold shadow-2xl animate-in fade-in slide-in-from-top-2">
-          {toast}
-        </div>
-      )}
-      {errorToast && (
-        <div className="fixed top-6 right-6 z-50 px-5 py-3 rounded-xl bg-red-600 text-white text-sm font-semibold shadow-2xl animate-in fade-in slide-in-from-top-2">
-          {errorToast}
-        </div>
-      )}
-
+    <div className="space-y-8 max-w-5xl mx-auto pb-16 text-xs select-none">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-white flex items-center gap-2.5">
           <Key className="w-6 h-6 text-[#7c3aed]" /> Settings & BYOK API Keys
         </h1>
         <p className="text-xs text-[#8e8ea0] mt-1">
-          Bring Your Own Key (BYOK): Configure your own AI provider keys for objective chapter extraction.
+          Notter 2.0 is 100% Offline-First. Your manuscripts and story bibles are stored locally inside your browser. Add your custom AI provider API keys below for chapter extractions.
         </p>
       </div>
 
-      {/* Account Info */}
-      <div className="p-6 rounded-2xl bg-[#121218] border border-[#232334] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#1e1e2a] border border-[#232334] flex items-center justify-center text-[#a78bfa]">
-            <User className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-[#8e8ea0]">Authenticated Account</div>
-            <div className="text-sm font-bold text-white mt-0.5">{user?.email || 'Authenticated User (Local Session)'}</div>
-          </div>
+      {toast && (
+        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-bold flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" /> {toast}
         </div>
-        {user && (
+      )}
+
+      {errorToast && (
+        <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 font-bold flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-red-400" /> {errorToast}
+        </div>
+      )}
+
+      {/* Offline Storage & Backup Panel */}
+      <div className="p-6 rounded-2xl bg-[#121218] border border-[#232334] space-y-4 shadow-xl">
+        <div className="flex items-center justify-between border-b border-[#232334] pb-3">
+          <h2 className="text-base font-bold text-white flex items-center gap-2">
+            <HardDrive className="w-4 h-4 text-emerald-400" /> Local Storage & Privacy Controls
+          </h2>
+          <span className="px-2.5 py-0.5 rounded text-[10px] uppercase font-extrabold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+            100% Offline Engine Active
+          </span>
+        </div>
+
+        <p className="text-[#a1a1aa] leading-relaxed">
+          Your books, story bibles, characters, timeline events, and notes reside strictly inside your browser’s IndexedDB storage. You can export a backup JSON at any time or restore a backup onto another computer.
+        </p>
+
+        <div className="flex flex-wrap items-center gap-4 pt-2">
           <button
-            onClick={logout}
-            className="px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 font-bold text-xs hover:bg-red-500/20 transition-all"
+            onClick={handleExportWorkspace}
+            className="px-4 py-2.5 rounded-xl bg-[#7c3aed] text-white font-bold hover:bg-[#6d28d9] transition-all flex items-center gap-2 shadow-purple"
           >
-            Sign Out
+            <Download className="w-4 h-4" /> Export Complete Workspace (.JSON)
           </button>
-        )}
+
+          <label className="px-4 py-2.5 rounded-xl bg-[#1e1e2a] border border-[#232334] text-white font-semibold hover:bg-[#272738] transition-all flex items-center gap-2 cursor-pointer">
+            <Upload className="w-4 h-4 text-[#a78bfa]" /> Import Workspace JSON
+            <input type="file" accept=".json" onChange={handleImportWorkspace} className="hidden" />
+          </label>
+        </div>
       </div>
 
-      {/* BYOK API Keys Section */}
-      <div className="p-6 rounded-2xl bg-[#121218] border border-[#232334] space-y-6">
-        <div className="flex items-center justify-between border-b border-[#232334] pb-4">
-          <div className="flex items-center gap-2.5">
-            <Server className="w-5 h-5 text-[#a78bfa]" />
-            <div>
-              <h2 className="text-base font-bold text-white">AI Provider API Keys (BYOK)</h2>
-              <p className="text-xs text-[#8e8ea0]">Notter never provides AI credits. Extractions execute directly using your configured provider API key.</p>
-            </div>
+      {/* BYOK API Key Section */}
+      <div className="p-6 rounded-2xl bg-[#121218] border border-[#232334] space-y-6 shadow-xl">
+        <div className="flex items-center justify-between border-b border-[#232334] pb-3">
+          <div>
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400" /> Bring Your Own Key (BYOK)
+            </h2>
+            <p className="text-[11px] text-[#8e8ea0] mt-0.5">
+              API keys are saved locally in your browser and are sent directly to the selected AI provider.
+            </p>
           </div>
 
           <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#7c3aed] text-white hover:bg-[#6d28d9] text-xs font-bold transition-all shadow-purple"
+            onClick={() => setShowAddForm(s => !s)}
+            className="px-3.5 py-2 rounded-xl bg-[#7c3aed] text-white font-bold hover:bg-[#6d28d9] transition-all flex items-center gap-1.5 shadow-purple"
           >
-            <Plus className="w-4 h-4" /> {showAddForm ? 'Cancel' : 'Add API Key'}
+            <Plus className="w-4 h-4" /> Add API Key
           </button>
         </div>
 
-        {/* Add Provider Key Form */}
+        {/* Add Key Form */}
         {showAddForm && (
-          <div className="p-5 rounded-xl bg-[#181820] border border-[#7c3aed]/40 space-y-4 animate-in fade-in zoom-in-95">
-            <h3 className="font-bold text-white text-sm">Configure New AI Provider</h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="space-y-1">
-                <label className="font-bold text-[#8e8ea0] uppercase text-[10px]">Select Provider</label>
+          <form onSubmit={handleSaveKey} className="p-5 rounded-xl bg-[#181820] border border-[#232334] space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-[#8e8ea0] uppercase tracking-wider mb-1">
+                  AI Provider
+                </label>
                 <select
                   value={providerId}
-                  onChange={(e) => handleProviderSelect(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121218] border border-[#232334] text-white text-xs"
+                  onChange={(e) => {
+                    const pid = e.target.value;
+                    setProviderId(pid);
+                    const p = PROVIDERS.find(x => x.id === pid);
+                    if (p) setModelInput(p.defaultModel);
+                  }}
+                  className="w-full bg-[#121218] border border-[#232334] rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-[#7c3aed]"
                 >
                   {PROVIDERS.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
@@ -310,216 +240,79 @@ export default function SettingsPage() {
                 </select>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-[#8e8ea0] uppercase text-[10px]">Configuration Label Name</label>
+              <div>
+                <label className="block text-xs font-bold text-[#8e8ea0] uppercase tracking-wider mb-1">
+                  Key Label / Name
+                </label>
                 <input
                   type="text"
+                  placeholder="e.g. My Personal Gemini Key"
                   value={keyName}
                   onChange={(e) => setKeyName(e.target.value)}
-                  placeholder="e.g. My Gemini Key"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121218] border border-[#232334] text-white text-xs"
+                  className="w-full bg-[#121218] border border-[#232334] rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-[#7c3aed]"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="space-y-1">
-                <label className="font-bold text-[#8e8ea0] uppercase text-[10px]">API Key</label>
-                <input
-                  type="password"
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  placeholder={PROVIDERS.find(p => p.id === providerId)?.placeholder || 'Enter API Key...'}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121218] border border-[#232334] text-white text-xs font-mono"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-[#8e8ea0] uppercase text-[10px]">Default Model</label>
-                <input
-                  type="text"
-                  value={modelInput}
-                  onChange={(e) => setModelInput(e.target.value)}
-                  placeholder="e.g. gemini-1.5-flash, gpt-4o"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121218] border border-[#232334] text-white text-xs font-mono"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-[#8e8ea0] uppercase tracking-wider mb-1">
+                API Key Secret
+              </label>
+              <input
+                type="password"
+                placeholder={PROVIDERS.find(p => p.id === providerId)?.placeholder || 'Paste API secret key here...'}
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                className="w-full bg-[#121218] border border-[#232334] rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-[#7c3aed]"
+              />
             </div>
 
-            {(providerId === 'ollama' || providerId === 'lmstudio' || providerId === 'custom') && (
-              <div className="space-y-1 text-xs">
-                <label className="font-bold text-[#8e8ea0] uppercase text-[10px]">Base API URL (Local/Custom Endpoint)</label>
-                <input
-                  type="text"
-                  value={baseUrlInput}
-                  onChange={(e) => setBaseUrlInput(e.target.value)}
-                  placeholder="e.g. http://localhost:11434/v1"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121218] border border-[#232334] text-white text-xs font-mono"
-                />
-              </div>
-            )}
-
-            {/* Connection Test Result */}
-            {testResult && (
-              <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
-                testResult.includes('Successful')
-                  ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
-                  : 'bg-red-500/10 border border-red-500/30 text-red-300'
-              }`}>
-                {testResult.includes('Successful') ? <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />}
-                <span>{testResult}</span>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
-                onClick={handleTestConnection}
-                disabled={testing}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#121218] border border-[#232334] text-[#a78bfa] font-bold text-xs hover:border-[#7c3aed]"
+                onClick={() => setShowAddForm(false)}
+                className="px-4 py-2 rounded-xl bg-[#121218] border border-[#232334] text-[#8e8ea0] hover:text-white font-bold"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${testing ? 'animate-spin' : ''}`} /> {testing ? 'Testing...' : 'Test Connection'}
+                Cancel
               </button>
-
               <button
-                type="button"
-                onClick={handleSaveKey}
-                className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#7c3aed] text-white font-bold text-xs hover:bg-[#6d28d9] shadow-purple"
+                type="submit"
+                className="px-5 py-2 rounded-xl bg-[#7c3aed] text-white font-bold hover:bg-[#6d28d9] transition-all shadow-purple"
               >
-                Save Configuration
+                Save API Key
               </button>
             </div>
-          </div>
+          </form>
         )}
 
-        {/* Existing Configured Keys List */}
+        {/* Existing Keys Table */}
         <div className="space-y-3">
-          {apiKeys.length === 0 && !showAddForm && (
-            <div className="p-8 text-center text-xs text-[#8e8ea0] rounded-xl bg-[#181820] border border-[#232334]">
-              No AI provider API keys configured yet. Click &quot;Add API Key&quot; above to add your Gemini, OpenAI, or Claude key.
-            </div>
-          )}
-
-          {apiKeys.map(k => (
-            <div key={k.id} className="p-4 rounded-xl bg-[#181820] border border-[#232334] flex items-center justify-between text-xs">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-white text-sm">{k.name}</span>
-                  {k.is_default && (
-                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      Default Active
-                    </span>
-                  )}
-                  <span className="px-2 py-0.5 rounded text-[10px] uppercase font-mono bg-[#0c0c10] text-[#a78bfa] border border-[#232334]">
-                    {k.provider_id}
-                  </span>
+          {apiKeys.length === 0 ? (
+            <p className="text-center py-6 text-[#8e8ea0] italic">
+              No custom API keys added yet. Add a key above to analyze chapters with AI.
+            </p>
+          ) : (
+            apiKeys.map(k => (
+              <div key={k.id} className="p-4 rounded-xl bg-[#181820] border border-[#232334] flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-white text-xs">{k.name}</div>
+                  <div className="text-[11px] text-[#8e8ea0] font-mono mt-0.5">
+                    Provider: {k.provider_id.toUpperCase()} • Model: {k.default_model}
+                  </div>
                 </div>
-                <div className="text-[#8e8ea0] font-mono">
-                  Model: <strong className="text-white">{k.default_model}</strong> | Key: ••••••••••••{k.api_key_encrypted.slice(-4)}
-                </div>
-              </div>
 
-              <div className="flex items-center gap-2">
-                {!k.is_default && (
-                  <button
-                    onClick={() => handleSetDefaultKey(k.id)}
-                    className="px-3 py-1.5 rounded-lg bg-[#121218] border border-[#232334] text-[#a78bfa] hover:text-white font-semibold text-[11px]"
-                  >
-                    Set Active Default
-                  </button>
-                )}
                 <button
                   onClick={() => handleDeleteKey(k.id)}
-                  className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-all"
-                  title="Delete API Key"
+                  className="p-2 rounded-lg text-[#8e8ea0] hover:text-red-400 hover:bg-red-500/10 transition-all"
+                  title="Remove Key"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
-
-      {/* System Extraction Prompt Inspector */}
-      <div className="p-6 rounded-2xl bg-[#121218] border border-[#232334] space-y-4">
-        <div className="flex items-center justify-between border-b border-[#232334] pb-4">
-          <div className="flex items-center gap-2.5">
-            <ShieldCheck className="w-5 h-5 text-emerald-400" />
-            <div>
-              <h2 className="text-base font-bold text-white">System Extraction Prompt</h2>
-              <p className="text-xs text-[#8e8ea0]">Strict non-generative prompt used for all structured JSON extractions.</p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(SYSTEM_EXTRACTION_PROMPT);
-              setCopiedPrompt(true);
-              setTimeout(() => setCopiedPrompt(false), 3000);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#181820] border border-[#232334] text-[#a78bfa] text-xs font-semibold hover:text-white"
-          >
-            {copiedPrompt ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            {copiedPrompt ? 'Copied Prompt!' : 'Copy System Prompt'}
-          </button>
-        </div>
-
-        <div className="p-4 rounded-xl bg-[#0c0c10] border border-[#232334] font-mono text-[11px] text-[#a1a1aa] leading-relaxed max-h-60 overflow-y-auto whitespace-pre-wrap">
-          {SYSTEM_EXTRACTION_PROMPT}
-        </div>
-      </div>
-
-      {/* Advanced Settings & Cache Management */}
-      <div className="p-6 rounded-2xl bg-[#121218] border border-[#232334] space-y-4 text-xs">
-        <h2 className="text-base font-bold text-white border-b border-[#232334] pb-3">Advanced Settings &amp; Data Maintenance</h2>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <button
-            onClick={() => {
-              const data = {
-                apiKeys,
-                themePrefs: localStorage.getItem('notter_theme_prefs'),
-                exportedAt: new Date().toISOString()
-              };
-              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `notter-settings-${Date.now()}.json`;
-              a.click();
-              showSuccess('Exported settings JSON!');
-            }}
-            className="p-4 rounded-xl bg-[#181820] border border-[#232334] hover:border-[#7c3aed] font-bold text-white text-left transition-all"
-          >
-            Export Settings JSON
-            <span className="block text-[10px] text-[#8e8ea0] font-normal mt-0.5">Download local keys and theme configuration</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (confirm('Clear local storage cache? (Saved sessions will be preserved in database)')) {
-                localStorage.clear();
-                showSuccess('Local cache cleared successfully!');
-                setTimeout(() => window.location.reload(), 1000);
-              }
-            }}
-            className="p-4 rounded-xl bg-[#181820] border border-[#232334] hover:border-amber-500 font-bold text-amber-300 text-left transition-all"
-          >
-            Clear Local Cache
-            <span className="block text-[10px] text-[#8e8ea0] font-normal mt-0.5">Free up browser storage &amp; reset UI state</span>
-          </button>
-
-          <a
-            href="/about"
-            className="p-4 rounded-xl bg-[#181820] border border-[#232334] hover:border-cyan-400 font-bold text-cyan-300 text-left transition-all"
-          >
-            About &amp; Developer Diagnostics
-            <span className="block text-[10px] text-[#8e8ea0] font-normal mt-0.5">App version v2.2.0 &amp; DB connection stats</span>
-          </a>
-        </div>
-      </div>
-
     </div>
   );
 }

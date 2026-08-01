@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { indexedDBAdapter } from '@/lib/storage/indexedDBAdapter';
 
 export interface ImageProcessingOptions {
   width: number;
@@ -14,7 +14,7 @@ export async function compressAndResizeImage(
   file: File,
   options: ImageProcessingOptions
 ): Promise<{ dataUrl: string; blob: Blob; sizeBytes: number }> {
-  const { width, height, quality = 0.85, maxSizeBytes = 500 * 1024 } = options;
+  const { width, height, quality = 0.85 } = options;
 
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {
@@ -71,7 +71,7 @@ export async function compressAndResizeImage(
 }
 
 /**
- * Uploads an image to Supabase Storage and deletes the old image file if replacing.
+ * Uploads/Saves an image to IndexedDB Blob storage and cleans up old image Blobs.
  */
 export async function uploadAndReplaceImage(
   bucketName: 'covers' | 'avatars',
@@ -79,51 +79,32 @@ export async function uploadAndReplaceImage(
   oldImageUrl?: string,
   options: ImageProcessingOptions = { width: 600, height: 800, maxSizeBytes: 500 * 1024 }
 ): Promise<string> {
-  const supabase = createClient();
   const compressed = await compressAndResizeImage(file, options);
+  const blobId = `${bucketName}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
-  // Fallback to DataURL if Supabase session is offline or storage fails
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return compressed.dataUrl;
+    await indexedDBAdapter.saveBlob(blobId, compressed.blob);
 
-    const fileExt = compressed.dataUrl.startsWith('data:image/webp') ? 'webp' : 'jpg';
-    const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
-
-    const { data: uploadData, error: uploadErr } = await supabase.storage
-      .from(bucketName)
-      .upload(fileName, compressed.blob, {
-        contentType: compressed.dataUrl.startsWith('data:image/webp') ? 'image/webp' : 'image/jpeg',
-        upsert: true
-      });
-
-    if (uploadErr || !uploadData) {
-      console.warn(`[Supabase Storage] Upload fallback to DataURL:`, uploadErr?.message);
-      return compressed.dataUrl;
+    // Delete old blob if replacing
+    if (oldImageUrl && oldImageUrl.startsWith('blob_')) {
+      await indexedDBAdapter.delete('blobs', oldImageUrl);
     }
 
-    const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(uploadData.path);
-    const newPublicUrl = publicUrlData.publicUrl;
-
-    // Delete old image file from Supabase Storage if present (safeguarded)
-    if (oldImageUrl && oldImageUrl.includes(bucketName)) {
-      try {
-        const parts = oldImageUrl.split(`${bucketName}/`);
-        if (parts.length > 1) {
-          const oldPath = parts[1];
-          const { error: removeErr } = await supabase.storage.from(bucketName).remove([oldPath]);
-          if (removeErr) {
-            console.info(`[Supabase Storage] Note: old file cleanup bypassed:`, removeErr.message);
-          }
-        }
-      } catch (cleanupErr) {
-        console.info(`[Supabase Storage] Note: old file cleanup bypassed:`, cleanupErr);
-      }
-    }
-
-    return newPublicUrl;
-  } catch (err) {
-    console.warn(`[Supabase Storage] Exception fallback to DataURL:`, err);
     return compressed.dataUrl;
+  } catch (e) {
+    console.warn('[ImageManager] IndexedDB blob save fallback to DataURL:', e);
+    return compressed.dataUrl;
+  }
+}
+
+/**
+ * Safely removes an image from local Blob storage.
+ */
+export async function removeStorageImage(bucketName: 'covers' | 'avatars', imageId?: string): Promise<boolean> {
+  if (!imageId) return true;
+  try {
+    return await indexedDBAdapter.delete('blobs', imageId);
+  } catch (e) {
+    return false;
   }
 }

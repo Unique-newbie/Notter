@@ -93,7 +93,7 @@ export default function CharactersPage() {
 
   const handleConfirmIntelligentMerge = async (overrides: Partial<Character>) => {
     if (!mergePrimary || !mergeSecondary) return;
-    const success = await repository.intelligentMergeCharacters(mergePrimary.id, mergeSecondary.id, overrides);
+    const success = await repository.intelligentMergeCharacters(bookId, mergePrimary.id, mergeSecondary.id, 'combine');
     if (success) {
       showToast(`Merged "${mergeSecondary.name}" into "${mergePrimary.name}" with zero data loss!`);
     }

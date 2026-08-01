@@ -279,7 +279,7 @@ ${content}
       const draft = await repository.saveDraftExtraction(bookId, activeChapter.id, validation.data);
       
       if (draft && directApprove) {
-        const approved = await repository.approveExtraction(draft.id, validation.data);
+        const approved = await repository.approveExtraction(draft.id);
         if (approved) {
           setImportModalOpen(false);
           setRawJsonInput('');
