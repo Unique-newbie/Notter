@@ -593,6 +593,10 @@ class StoryRepository {
     };
 
     await indexedDBAdapter.save('ai_extractions', draft);
+    if (chapterId) {
+      await this.updateChapter(chapterId, { status: 'Pending Review' });
+    }
+    this.notifyDataChanged();
     return draft;
   }
 
@@ -622,6 +626,10 @@ class StoryRepository {
   }
 
   async rejectExtraction(extractionId: string): Promise<boolean> {
+    const draft = await indexedDBAdapter.getById<AIExtraction>('ai_extractions', extractionId);
+    if (draft && draft.chapterId) {
+      await this.updateChapter(draft.chapterId, { status: 'Unprocessed' });
+    }
     await indexedDBAdapter.delete('ai_extractions', extractionId);
     this.notifyDataChanged();
     return true;
@@ -679,6 +687,10 @@ class StoryRepository {
           type: 'City'
         });
       }
+    }
+
+    if (draft.chapterId) {
+      await this.updateChapter(draft.chapterId, { status: 'Analyzed' });
     }
 
     await indexedDBAdapter.delete('ai_extractions', extractionId);

@@ -332,6 +332,7 @@ ${content}
           setRawJsonInput('');
           setSaveToast('Extracted JSON approved and saved to database!');
           setTimeout(() => setSaveToast(''), 3000);
+          setActiveChapter(prev => prev ? { ...prev, status: 'Analyzed' } : prev);
           await refreshChapters(activeChapter.id);
         } else {
           setErrorToast('Failed to approve extraction.');
@@ -461,26 +462,26 @@ ${content}
         <div className="flex-1 bg-[#121218] border border-[#232334] rounded-xl flex flex-col overflow-hidden">
           
           {/* Header Control Bar */}
-          <div className="p-4 border-b border-[#232334] bg-[#0c0c10] flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 flex-1">
+          <div className="p-3.5 border-b border-[#232334] bg-[#0c0c10] flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-[240px] flex-1">
               <input
                 type="number"
                 value={chapterNumber}
                 onChange={(e) => setChapterNumber(parseInt(e.target.value) || 1)}
-                className="w-16 bg-[#181820] border border-[#232334] rounded-lg px-2.5 py-1 text-center font-bold text-xs text-[#a78bfa] focus:outline-none focus:border-[#7c3aed]"
+                className="w-14 bg-[#181820] border border-[#232334] rounded-lg px-2 py-1 text-center font-bold text-xs text-[#a78bfa] focus:outline-none focus:border-[#7c3aed]"
               />
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Chapter Title..."
-                className="flex-1 bg-[#181820] border border-[#232334] rounded-lg px-3.5 py-1 text-sm font-bold text-white focus:outline-none focus:border-[#7c3aed]"
+                className="flex-1 bg-[#181820] border border-[#232334] rounded-lg px-3 py-1 text-sm font-bold text-white focus:outline-none focus:border-[#7c3aed] min-w-[120px]"
               />
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2">
               {/* Save Status Indicator */}
-              <div className="flex items-center gap-1.5 text-xs text-[#8e8ea0] mr-2">
+              <div className="flex items-center gap-1 text-xs text-[#8e8ea0] mr-1">
                 {saveStatus === 'saving' && <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#a78bfa]" />}
                 {saveStatus === 'saved' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
                 <span className={saveStatus === 'saved' ? 'text-emerald-400 font-semibold' : 'text-[#8e8ea0]'}>
@@ -488,32 +489,25 @@ ${content}
                 </span>
               </div>
 
-              {/* Start Sprint Mode 2.0 Button */}
+              {/* Main AI Extraction Button */}
               <button
-                onClick={() => setSprintLauncherOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700 text-xs font-extrabold transition-all shadow-xl"
-                title="Start Offline Sprint Writing Session"
+                onClick={() => handleRunAIAnalysis()}
+                disabled={isAnalyzing || batchAnalyzing || !content.trim()}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#7c3aed] hover:bg-[#6d28d9] text-white text-xs font-extrabold transition-all shadow-purple disabled:opacity-50"
               >
-                <Flame className="w-3.5 h-3.5 text-amber-200 fill-amber-300" /> Start Sprint
-              </button>
-
-              {/* Zen Writing Pad Button */}
-              <button
-                onClick={() => setZenPadOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#7c3aed]/20 border border-[#7c3aed]/40 text-[#a78bfa] hover:bg-[#7c3aed] hover:text-white text-xs font-bold transition-all shadow-purple"
-                title="Open Zen Writing Pad"
-              >
-                <Maximize2 className="w-3.5 h-3.5" /> Zen Pad
-              </button>
-
-              {/* Copy Full Prompt Button */}
-              <button
-                onClick={handleCopyFullPromptAndChapter}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181820] border border-[#232334] text-xs font-semibold text-[#a78bfa] hover:text-white hover:border-[#7c3aed]/40 transition-all"
-                title="Copy System Prompt + Chapter Text to paste into Gemini Web"
-              >
-                {copiedFullPrompt ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                {copiedFullPrompt ? 'Copied Prompt!' : 'Copy Prompt'}
+                {isAnalyzing ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Extracting...
+                  </>
+                ) : activeChapter.status === 'Analyzed' ? (
+                  <>
+                    <RotateCcw className="w-3.5 h-3.5 text-amber-300" /> Re-extract
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" /> Analyze Chapter with AI
+                  </>
+                )}
               </button>
 
               {/* Import Raw JSON Button */}
@@ -525,30 +519,38 @@ ${content}
                 <FileJson className="w-3.5 h-3.5" /> Import JSON
               </button>
 
+              {/* Copy Full Prompt Button */}
               <button
-                onClick={() => handleRunAIAnalysis()}
-                disabled={isAnalyzing || batchAnalyzing || !content.trim()}
-                className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-[#7c3aed] hover:bg-[#6d28d9] text-white text-xs font-bold transition-all shadow-purple disabled:opacity-50"
+                onClick={handleCopyFullPromptAndChapter}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181820] border border-[#232334] text-xs font-semibold text-[#a78bfa] hover:text-white hover:border-[#7c3aed]/40 transition-all"
+                title="Copy System Prompt + Chapter Text to paste into Gemini Web"
               >
-                {isAnalyzing ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Extracting...
-                  </>
-                ) : activeChapter.status === 'Analyzed' ? (
-                  <>
-                    <RotateCcw className="w-3.5 h-3.5 text-amber-300" /> Re-extract Chapter
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5" /> Analyze Chapter with AI
-                  </>
-                )}
+                {copiedFullPrompt ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedFullPrompt ? 'Copied!' : 'Copy Prompt'}
+              </button>
+
+              {/* Start Sprint Mode Button */}
+              <button
+                onClick={() => setSprintLauncherOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700 text-xs font-extrabold transition-all shadow-xl"
+                title="Start Offline Sprint Writing Session"
+              >
+                <Flame className="w-3.5 h-3.5 text-amber-200 fill-amber-300" /> Sprint
+              </button>
+
+              {/* Zen Writing Pad Button */}
+              <button
+                onClick={() => setZenPadOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#7c3aed]/20 border border-[#7c3aed]/40 text-[#a78bfa] hover:bg-[#7c3aed] hover:text-white text-xs font-bold transition-all shadow-purple"
+                title="Open Zen Writing Pad"
+              >
+                <Maximize2 className="w-3.5 h-3.5" /> Zen Pad
               </button>
             </div>
           </div>
 
           {/* Sub-Header Stats & Status Bar */}
-          <div className="px-6 py-2 bg-[#09090b] border-b border-[#232334] flex items-center justify-between text-xs text-[#8e8ea0]">
+          <div className="px-6 py-2 bg-[#09090b] border-b border-[#232334] flex flex-wrap items-center justify-between gap-3 text-xs text-[#8e8ea0]">
             <div className="flex items-center gap-4">
               <span>Word Count: <strong className="text-white font-mono">{currentWordCount}</strong></span>
               <span>Reading Time: <strong className="text-white font-mono">{currentReadingTime} min</strong></span>
@@ -567,6 +569,17 @@ ${content}
               >
                 {activeChapter.status}
               </span>
+
+              {/* Analyze Chapter CTA in sub-header when Unprocessed */}
+              {activeChapter.status === 'Unprocessed' && (
+                <button
+                  onClick={() => handleRunAIAnalysis()}
+                  disabled={isAnalyzing || batchAnalyzing || !content.trim()}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#7c3aed]/20 border border-[#7c3aed]/40 text-[#a78bfa] hover:bg-[#7c3aed] hover:text-white font-bold text-[11px] transition-all disabled:opacity-50"
+                >
+                  <Sparkles className="w-3 h-3" /> Analyze with AI
+                </button>
+              )}
 
               {/* Clickable Review & Approve Button when Pending Review */}
               {activeChapter.status === 'Pending Review' && (
@@ -595,7 +608,7 @@ ${content}
                     className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-[11px] transition-all disabled:opacity-50"
                     title="Re-extract chapter text with AI to generate a fresh receipt"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" /> Re-extract Chapter
+                    <RotateCcw className="w-3.5 h-3.5" /> Re-extract
                   </button>
                 </div>
               )}
