@@ -8,6 +8,9 @@ import {
   Key, Sparkles, Plus, Trash2, CheckCircle2, AlertTriangle, ShieldCheck,
   Download, Upload, HardDrive, Palette, Sliders, Command, Info, Check, RefreshCw
 } from 'lucide-react';
+import {
+  useTheme, type ThemeId, type FontSize,
+} from "@/lib/theme/ThemeContext";
 
 interface ApiKeyRecord {
   id: string;
@@ -31,22 +34,27 @@ const PROVIDERS = [
 ];
 
 const THEMES = [
-  { id: 'theme-obsidian', name: 'Obsidian Dark', color: '#09090b', accent: '#7c3aed', desc: 'Sleek dark violet theme for night writing' },
-  { id: 'theme-amoled', name: 'AMOLED Black', color: '#000000', accent: '#a78bfa', desc: 'Pure true-black contrast for OLED displays' },
-  { id: 'theme-nord', name: 'Nordic Frost', color: '#2e3440', accent: '#88c0d0', desc: 'Cool arctic blue palette inspired by Nord' },
-  { id: 'theme-dracula', name: 'Dracula Cyber', color: '#282a36', accent: '#ff79c6', desc: 'Vibrant neon purple and pink theme' },
-  { id: 'theme-light', name: 'Clean Daylight', color: '#f8fafc', accent: '#6366f1', desc: 'High readability light theme for daytime' }
-];
+  { id: "dark", name: "Dark", color: "#18181b", accent: "#7c3aed", desc: "Modern dark workspace with balanced contrast." },
+  { id: "amoled", name: "AMOLED", color: "#000000", accent: "#a78bfa", desc: "Pure black theme optimized for OLED displays." },
+  { id: "light", name: "Light", color: "#f8fafc", accent: "#6366f1", desc: "Bright, clean workspace for daytime writing." },
+  { id: "royal", name: "Royal", color: "#1a102f", accent: "#8b5cf6", desc: "Deep royal purple interface." },
+  { id: "crimson", name: "Crimson", color: "#1b0f14", accent: "#ef4444", desc: "Dark crimson workspace." },
+  { id: "arctic", name: "Arctic", color: "#0f172a", accent: "#38bdf8", desc: "Cool blue-gray writing environment." },
+  { id: "forest", name: "Forest", color: "#0f1f17", accent: "#22c55e", desc: "Calming forest green palette." },
+  { id: "golden", name: "Golden", color: "#2b1d08", accent: "#f59e0b", desc: "Warm amber inspired workspace." },
+  { id: "sakura", name: "Sakura", color: "#24131d", accent: "#ec4899", desc: "Elegant pink & rose writing theme." },
+] as const;
 
 export default function ConsolidatedSettingsPage() {
+
+  const { theme, setTheme, accent, setAccent, density, setDensity, fontSize, setFontSize,} = useTheme();
+
   const [activeTab, setActiveTab] = useState<'appearance' | 'editor' | 'ai' | 'backup' | 'shortcuts' | 'info'>('appearance');
   const [toast, setToast] = useState('');
   const [errorToast, setErrorToast] = useState('');
 
   // Appearance & Theme state
-  const [currentTheme, setCurrentTheme] = useState('theme-obsidian');
   const [fontFamily, setFontFamily] = useState('Inter, sans-serif');
-  const [fontSize, setFontSize] = useState('16px');
 
   // Editor Preferences state
   const [autoSaveMs, setAutoSaveMs] = useState(1000);
@@ -69,15 +77,11 @@ export default function ConsolidatedSettingsPage() {
 
   useEffect(() => {
     // Load theme & preferences
-    const storedTheme = localStorage.getItem('notter_theme') || 'theme-obsidian';
     const storedFont = localStorage.getItem('notter_font') || 'Inter, sans-serif';
-    const storedSize = localStorage.getItem('notter_fontsize') || '16px';
     const storedAutoSave = parseInt(localStorage.getItem('notter_autosave_ms') || '1000', 10);
     const storedKeys = JSON.parse(localStorage.getItem('notter_byok_keys') || '[]');
 
-    setCurrentTheme(storedTheme);
     setFontFamily(storedFont);
-    setFontSize(storedSize);
     setAutoSaveMs(storedAutoSave);
     setApiKeys(storedKeys);
 
@@ -109,16 +113,14 @@ export default function ConsolidatedSettingsPage() {
     setTimeout(() => setErrorToast(''), 4000);
   };
 
-  const handleApplyTheme = (themeId: string) => {
-    setCurrentTheme(themeId);
-    localStorage.setItem('notter_theme', themeId);
-    document.documentElement.className = themeId;
+  const handleApplyTheme = (themeId: ThemeId) => {
+    setTheme(themeId);
     showSuccess(`Theme switched to ${THEMES.find(t => t.id === themeId)?.name}`);
   };
 
   const handleSaveEditorPrefs = () => {
     localStorage.setItem('notter_font', fontFamily);
-    localStorage.setItem('notter_fontsize', fontSize);
+    setFontSize(fontSize);
     localStorage.setItem('notter_autosave_ms', autoSaveMs.toString());
     showSuccess('Editor writing preferences saved!');
   };
@@ -280,12 +282,12 @@ export default function ConsolidatedSettingsPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {THEMES.map((theme) => {
-              const isSelected = currentTheme === theme.id;
+            {THEMES.map((themeOption) => {
+                const isSelected = theme === themeOption.id;
               return (
                 <button
-                  key={theme.id}
-                  onClick={() => handleApplyTheme(theme.id)}
+                  key={themeOption.id}
+                  onClick={() => handleApplyTheme(themeOption.id)}
                   className={`p-4 rounded-xl border text-left transition-all relative overflow-hidden group ${
                     isSelected
                       ? 'bg-[#181820] border-[#7c3aed] ring-2 ring-[#7c3aed]/40'
@@ -294,12 +296,12 @@ export default function ConsolidatedSettingsPage() {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: theme.color }} />
-                      <span className="font-bold text-white text-xs">{theme.name}</span>
+                      <span className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: themeOption.color }} />
+                      <span className="font-bold text-white text-xs">{themeOption.name}</span>
                     </div>
                     {isSelected && <Check className="w-4 h-4 text-[#a78bfa]" />}
                   </div>
-                  <p className="text-[11px] text-[#8e8ea0]">{theme.desc}</p>
+                  <p className="text-[11px] text-[#8e8ea0]">{themeOption.desc}</p>
                 </button>
               );
             })}
@@ -339,13 +341,12 @@ export default function ConsolidatedSettingsPage() {
               </label>
               <select
                 value={fontSize}
-                onChange={(e) => setFontSize(e.target.value)}
+                onChange={(e) => setFontSize(e.target.value as FontSize)}
                 className="w-full bg-[#181820] border border-[#232334] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#7c3aed]"
               >
-                <option value="14px">14px Small</option>
-                <option value="16px">16px Standard</option>
-                <option value="18px">18px Large</option>
-                <option value="20px">20px Extra Large</option>
+                <option value="sm">Small</option>
+                <option value="md">Standard</option>
+                <option value="lg">Large</option>
               </select>
             </div>
 

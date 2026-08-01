@@ -3,15 +3,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export type ThemeId =
-  | 'dark'
-  | 'light'
-  | 'obsidian'
-  | 'amoled'
-  | 'dracula'
-  | 'nord'
-  | 'catppuccin'
-  | 'solarized-light'
-  | 'sepia';
+  | "dark"
+  | "light"
+  | "amoled"
+  | "royal"
+  | "crimson"
+  | "arctic"
+  | "forest"
+  | "golden"
+  | "sakura";
 
 export type AccentColor = 'violet' | 'cyan' | 'emerald' | 'amber' | 'rose' | 'indigo' | 'blue';
 export type Density = 'comfortable' | 'compact';

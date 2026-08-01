@@ -87,41 +87,25 @@ export function Header({ activeBookId = 'book-1', onSelectBook }: HeaderProps) {
         </div>
 
         {/* Center Search & Ask AI Trigger Buttons */}
-        <div className="flex items-center gap-3 flex-1 max-w-xl mx-4">
+        <div className="flex items-center gap-3 flex-1 max-w-xl mx-4 nowrap">
           <button
             onClick={() => setIsSearchOpen(true)}
             className="flex items-center gap-3 px-4 py-2 rounded-lg bg-[#121218] border border-[#232334] text-[#8e8ea0] hover:text-white hover:border-[#7c3aed]/40 transition-all text-xs flex-1 shadow-inner"
           >
             <Search className="w-4 h-4 text-[#7c3aed]" />
-            <span className="flex-1 text-left">Search Story Bible (Ctrl+K)...</span>
+            <span className="flex-1 text-left">Search...</span>
             <kbd className="px-2 py-0.5 text-[10px] font-mono font-semibold bg-[#1e1e2a] text-[#a78bfa] rounded border border-[#232334]">
               Ctrl+K
             </kbd>
           </button>
-
-          <button
-            onClick={() => setIsAIModalOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#7c3aed]/15 border border-[#7c3aed]/30 text-[#a78bfa] hover:bg-[#7c3aed] hover:text-white transition-all text-xs font-bold shrink-0 shadow-purple"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Ask AI</span>
-          </button>
         </div>
 
-        {/* Right Status Indicator */}
+        {/* Right Version Indicator */}
         <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#181820] border border-[#232334] text-[11px] text-[#a78bfa]">
-            <Zap className="w-3.5 h-3.5 text-[#7c3aed]" />
-            <span>BYOK Engine</span>
+          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#181820] border border-[#232334] text-[11px] text-[#d7d4df]">
+            <Zap className="w-3.5 h-3.5 text-[#ffff00]" />
+            <span>Version 1.1</span>
           </div>
-
-          <Link
-            href="/settings"
-            className="w-8 h-8 rounded-full bg-[#1e1e2a] border border-[#232334] flex items-center justify-center text-[#a1a1aa] hover:border-[#7c3aed] transition-colors"
-            title="Settings & Preferences"
-          >
-            <User className="w-4 h-4" />
-          </Link>
         </div>
       </header>
 
@@ -129,13 +113,6 @@ export function Header({ activeBookId = 'book-1', onSelectBook }: HeaderProps) {
       <GlobalSearchModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        activeBookId={activeBookId}
-      />
-
-      {/* Ask Story Bible AI RAG Modal */}
-      <StoryBibleAIModal
-        isOpen={isAIModalOpen}
-        onClose={() => setIsAIModalOpen(false)}
         activeBookId={activeBookId}
       />
     </>
