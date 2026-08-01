@@ -1046,7 +1046,20 @@ class StoryRepository {
       console.warn('[Merge FK Remap Note]:', e);
     }
 
-    // 5. Delete Secondary Record
+    // 5. Audit Log Merge Operation
+    this.recordMergeAudit({
+      id: `merge-${Date.now()}`,
+      bookId: primary.bookId,
+      entityType: 'character',
+      canonicalEntityId: primaryId,
+      canonicalEntityName: primary.name,
+      mergedEntityId: secondaryId,
+      mergedEntityName: secondary.name,
+      impactCount: combinedAppearances.length,
+      mergedAt: new Date().toISOString()
+    });
+
+    // 6. Delete Secondary Record
     await this.deleteCharacter(secondaryId);
 
     this.notifyDataChanged();
@@ -1055,6 +1068,205 @@ class StoryRepository {
 
   async mergeCharacters(primaryId: string, secondaryId: string): Promise<boolean> {
     return this.intelligentMergeCharacters(primaryId, secondaryId);
+  }
+
+  // ==================== MULTI-ENTITY INTELLIGENT MERGE ENGINE ====================
+
+  async intelligentMergeAbilities(primaryId: string, secondaryId: string, overrides?: Partial<Ability>): Promise<boolean> {
+    const abilities = await this.getAbilities('');
+    const primary = abilities.find(a => a.id === primaryId);
+    const secondary = abilities.find(a => a.id === secondaryId);
+    if (!primary || !secondary) return false;
+
+    const mergedUsers = Array.from(new Set([...primary.userCharacterNames, ...secondary.userCharacterNames]));
+    const mergedTags = Array.from(new Set([...(primary.tags || []), ...(secondary.tags || [])]));
+    const mergedNotes = Array.from(new Set([
+      ...(primary.authorNotes || []),
+      ...(secondary.authorNotes || []),
+      ...(secondary.description ? [`Historical info from ${secondary.name}: ${secondary.description}`] : [])
+    ]));
+
+    const mergedData: Partial<Ability> = {
+      description: primary.description.trim() ? primary.description : secondary.description,
+      category: primary.category || secondary.category,
+      userCharacterNames: mergedUsers,
+      evolutionNotes: primary.evolutionNotes || secondary.evolutionNotes,
+      tags: mergedTags,
+      authorNotes: mergedNotes,
+      ...overrides
+    };
+
+    await this.updateAbility(primaryId, mergedData);
+
+    this.recordMergeAudit({
+      id: `merge-${Date.now()}`,
+      bookId: primary.bookId,
+      entityType: 'ability',
+      canonicalEntityId: primaryId,
+      canonicalEntityName: primary.name,
+      mergedEntityId: secondaryId,
+      mergedEntityName: secondary.name,
+      impactCount: mergedUsers.length,
+      mergedAt: new Date().toISOString()
+    });
+
+    await this.deleteAbility(secondaryId);
+    this.notifyDataChanged();
+    return true;
+  }
+
+  async intelligentMergeItems(primaryId: string, secondaryId: string, overrides?: Partial<Item>): Promise<boolean> {
+    const items = await this.getItems('');
+    const primary = items.find(i => i.id === primaryId);
+    const secondary = items.find(i => i.id === secondaryId);
+    if (!primary || !secondary) return false;
+
+    const mergedAppearedIds = Array.from(new Set([...(primary.appearedInChapterIds || []), ...(secondary.appearedInChapterIds || [])]));
+    const mergedTags = Array.from(new Set([...(primary.tags || []), ...(secondary.tags || [])]));
+    const mergedNotes = Array.from(new Set([
+      ...(primary.authorNotes || []),
+      ...(secondary.authorNotes || []),
+      ...(secondary.description ? [`Historical description from ${secondary.name}: ${secondary.description}`] : [])
+    ]));
+
+    const mergedData: Partial<Item> = {
+      description: primary.description.trim() ? primary.description : secondary.description,
+      type: primary.type || secondary.type,
+      ownerCharacterName: primary.ownerCharacterName || secondary.ownerCharacterName,
+      previousOwnerName: primary.previousOwnerName || secondary.previousOwnerName,
+      currentLocationName: primary.currentLocationName || secondary.currentLocationName,
+      condition: primary.condition || secondary.condition,
+      status: primary.status || secondary.status,
+      appearedInChapterIds: mergedAppearedIds,
+      tags: mergedTags,
+      authorNotes: mergedNotes,
+      ...overrides
+    };
+
+    await this.updateItem(primaryId, mergedData);
+
+    this.recordMergeAudit({
+      id: `merge-${Date.now()}`,
+      bookId: primary.bookId,
+      entityType: 'item',
+      canonicalEntityId: primaryId,
+      canonicalEntityName: primary.name,
+      mergedEntityId: secondaryId,
+      mergedEntityName: secondary.name,
+      impactCount: mergedAppearedIds.length,
+      mergedAt: new Date().toISOString()
+    });
+
+    await this.deleteItem(secondaryId);
+    this.notifyDataChanged();
+    return true;
+  }
+
+  async intelligentMergeLocations(primaryId: string, secondaryId: string, overrides?: Partial<LocationEntity>): Promise<boolean> {
+    const locations = await this.getLocations('');
+    const primary = locations.find(l => l.id === primaryId);
+    const secondary = locations.find(l => l.id === secondaryId);
+    if (!primary || !secondary) return false;
+
+    const mergedCharsPresent = Array.from(new Set([...primary.charactersPresentNames, ...secondary.charactersPresentNames]));
+    const mergedEvents = Array.from(new Set([...primary.eventsOccurred, ...secondary.eventsOccurred]));
+    const mergedAppearedIds = Array.from(new Set([...(primary.appearedInChapterIds || []), ...(secondary.appearedInChapterIds || [])]));
+    const mergedTags = Array.from(new Set([...(primary.tags || []), ...(secondary.tags || [])]));
+
+    const mergedData: Partial<LocationEntity> = {
+      summary: primary.summary.trim() ? primary.summary : secondary.summary,
+      type: primary.type || secondary.type,
+      charactersPresentNames: mergedCharsPresent,
+      eventsOccurred: mergedEvents,
+      appearedInChapterIds: mergedAppearedIds,
+      tags: mergedTags,
+      ...overrides
+    };
+
+    await this.updateLocation(primaryId, mergedData);
+
+    // Remap location references across items & characters
+    try {
+      await this.supabase.from('items').update({ current_location_name: primary.name }).eq('current_location_name', secondary.name);
+      await this.supabase.from('characters').update({ current_location: primary.name }).eq('current_location', secondary.name);
+    } catch (e) {}
+
+    this.recordMergeAudit({
+      id: `merge-${Date.now()}`,
+      bookId: primary.bookId,
+      entityType: 'location',
+      canonicalEntityId: primaryId,
+      canonicalEntityName: primary.name,
+      mergedEntityId: secondaryId,
+      mergedEntityName: secondary.name,
+      impactCount: mergedCharsPresent.length,
+      mergedAt: new Date().toISOString()
+    });
+
+    await this.deleteLocation(secondaryId);
+    this.notifyDataChanged();
+    return true;
+  }
+
+  // ==================== MULTI-ENTITY DUPLICATE FINDERS ====================
+
+  async findDuplicateAbilitySuggestions(bookId: string): Promise<{ item1: Ability; item2: Ability; confidence: number }[]> {
+    const list = await this.getAbilities(bookId);
+    const suggestions: { item1: Ability; item2: Ability; confidence: number }[] = [];
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        if (isHighlySimilar(list[i].name, list[j].name)) {
+          suggestions.push({ item1: list[i], item2: list[j], confidence: 95 });
+        }
+      }
+    }
+    return suggestions;
+  }
+
+  async findDuplicateItemSuggestions(bookId: string): Promise<{ item1: Item; item2: Item; confidence: number }[]> {
+    const list = await this.getItems(bookId);
+    const suggestions: { item1: Item; item2: Item; confidence: number }[] = [];
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        if (isHighlySimilar(list[i].name, list[j].name)) {
+          suggestions.push({ item1: list[i], item2: list[j], confidence: 95 });
+        }
+      }
+    }
+    return suggestions;
+  }
+
+  async findDuplicateLocationSuggestions(bookId: string): Promise<{ item1: LocationEntity; item2: LocationEntity; confidence: number }[]> {
+    const list = await this.getLocations(bookId);
+    const suggestions: { item1: LocationEntity; item2: LocationEntity; confidence: number }[] = [];
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        if (isHighlySimilar(list[i].name, list[j].name)) {
+          suggestions.push({ item1: list[i], item2: list[j], confidence: 95 });
+        }
+      }
+    }
+    return suggestions;
+  }
+
+  // ==================== MERGE AUDIT LOG ENGINE ====================
+
+  private recordMergeAudit(record: any) {
+    if (typeof window === 'undefined') return;
+    try {
+      const history = JSON.parse(localStorage.getItem('notter_merge_history') || '[]');
+      history.unshift(record);
+      localStorage.setItem('notter_merge_history', JSON.stringify(history.slice(0, 100)));
+    } catch (e) {}
+  }
+
+  getMergeHistory(): any[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      return JSON.parse(localStorage.getItem('notter_merge_history') || '[]');
+    } catch (e) {
+      return [];
+    }
   }
 }
 

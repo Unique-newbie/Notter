@@ -149,10 +149,23 @@ export interface Character {
   updatedAt: string;
 }
 
+export interface MergeHistoryRecord {
+  id: string;
+  bookId: string;
+  entityType: 'character' | 'ability' | 'item' | 'location' | 'organization' | 'event';
+  canonicalEntityId: string;
+  canonicalEntityName: string;
+  mergedEntityId: string;
+  mergedEntityName: string;
+  impactCount: number;
+  mergedAt: string;
+}
+
 export interface Ability {
   id: string;
   bookId: string;
   name: string;
+  aliases?: string[];
   description: string;
   category?: string;
   userCharacterNames: string[];
@@ -169,6 +182,7 @@ export interface Item {
   id: string;
   bookId: string;
   name: string;
+  aliases?: string[];
   description: string;
   type?: string;
   ownerCharacterName?: string;
@@ -188,6 +202,7 @@ export interface LocationEntity {
   id: string;
   bookId: string;
   name: string;
+  aliases?: string[];
   summary: string;
   type?: string;
   charactersPresentNames: string[];
@@ -204,6 +219,7 @@ export interface Organization {
   id: string;
   bookId: string;
   name: string;
+  aliases?: string[];
   description: string;
   alignment?: string;
   leaderName?: string;
