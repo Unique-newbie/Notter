@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BookOpen, Sparkles, Layers, Clock, ArrowRight, FileText, Flame, Star, Archive, RotateCcw, Activity, Users, MapPin, Package, Shield } from 'lucide-react';
+import { BookOpen, Layers, Clock, ArrowRight, FileText, Flame, Star, Archive, RotateCcw, Activity, Users, MapPin, Package, Shield } from 'lucide-react';
 import { repository } from '@/lib/store/repository';
 import { sprintStore } from '@/lib/store/sprintStore';
 import { Book } from '@/types';
@@ -101,10 +101,6 @@ export default function DashboardPage() {
       {/* Welcome Banner with Quick Continue Card */}
       <div className="p-8 rounded-2xl bg-gradient-to-r from-[#121218] via-[#1a102f] to-[#121218] border border-[#7c3aed]/30 relative overflow-hidden shadow-purple flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
         <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7c3aed]/20 border border-[#7c3aed]/40 text-[#a78bfa] text-xs font-semibold mb-3">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Notter v2.2 Active</span>
-          </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white">
             Welcome back to <span className="purple-gradient-text">Notter</span>
           </h1>
