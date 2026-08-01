@@ -90,7 +90,9 @@ export interface Character {
   clothing?: string;
   goals?: string;
   
-  // Dynamic Fact Architecture
+  // Dynamic Fact Architecture & Canon Control
+  isLocked?: boolean;
+  citations?: FactCitation[];
   knownFacts?: string[];
   explicitAppearanceFacts?: string[];
   dynamicAttributes?: Record<string, string | number>;
@@ -531,6 +533,81 @@ export interface ChallengeEvent {
   currentProgressWords: number;
   startDate: string;
   endDate: string;
+}
+
+export interface FactCitation {
+  sourceChapterId: string;
+  sourceChapterNumber: number;
+  sourceChapterTitle: string;
+  sourceParagraphText?: string;
+  sourceQuote: string;
+  firstSeenDate: string;
+  lastConfirmedDate: string;
+  aiConfidence: 'Explicit' | 'Strong Match' | 'Possible Match' | 'Needs Review';
+}
+
+export interface StoryArc {
+  id: string;
+  bookId: string;
+  title: string;
+  description: string;
+  startChapterNumber: number;
+  endChapterNumber: number;
+  status: 'Upcoming' | 'Active' | 'Completed';
+  keyCharacterIds: string[];
+  createdAt: string;
+}
+
+export interface RelationshipStage {
+  id: string;
+  chapterNumber: number;
+  relationType: string;
+  description: string;
+  timestamp: string;
+}
+
+export interface ContinuityWarning {
+  id: string;
+  bookId: string;
+  severity: 'Warning' | 'Contradiction' | 'Critical';
+  title: string;
+  description: string;
+  entityName: string;
+  chapterNumber: number;
+  detectedAt: string;
+  dismissed?: boolean;
+}
+
+export interface CustomEntity {
+  id: string;
+  bookId: string;
+  name: string;
+  customType: string; // e.g. "Kingdom", "Religion", "Currency", "Monster", "Spaceship", "Bloodline"
+  summary: string;
+  attributes: Record<string, string | number>;
+  appearedInChapterIds: string[];
+  tags?: string[];
+  createdAt: string;
+}
+
+export interface GlossaryTerm {
+  id: string;
+  bookId: string;
+  term: string;
+  definition: string;
+  category: 'World' | 'System' | 'Magic' | 'Culture' | 'Lore';
+  manualEdit: boolean;
+  createdAt: string;
+}
+
+export interface StoryBibleSnapshot {
+  id: string;
+  bookId: string;
+  title: string;
+  chapterCount: number;
+  characterCount: number;
+  createdAt: string;
+  snapshotDataJson: string;
 }
 
 export interface LeaderboardEntry {

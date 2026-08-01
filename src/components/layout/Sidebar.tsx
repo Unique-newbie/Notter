@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, LayoutDashboard, Settings, Sparkles, ChevronLeft, ChevronRight, ShieldAlert, GitBranch, Layers, LogOut, Users, Package, MapPin, Shield, User, Flame, HelpCircle, Info } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Settings, Sparkles, ChevronLeft, ChevronRight, ShieldAlert, GitBranch, Layers, LogOut, Users, Package, MapPin, Shield, User, Flame, HelpCircle, Info, Merge } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/AuthContext';
 
@@ -40,6 +40,7 @@ export function Sidebar({ collapsed, onToggleCollapse, activeBookId }: SidebarPr
     { label: 'Locations', href: `/books/${currentBookId}/locations`, icon: MapPin },
     { label: 'Visual Timeline', href: `/books/${currentBookId}/timeline`, icon: GitBranch },
     { label: 'Consistency Audit', href: `/books/${currentBookId}/audit`, icon: ShieldAlert },
+    { label: 'Duplicate Review', href: `/books/${currentBookId}/duplicates`, icon: Merge },
   ];
 
   return (
