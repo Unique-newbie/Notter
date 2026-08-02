@@ -471,6 +471,25 @@ class StoryRepository {
       }
     }
 
+    // 7. Timeline Events
+    const events = data.events || data.timeline_events || data.timelineEvents || data.chapter_events || [];
+    for (const ev of events) {
+      const title = ev.title || ev.name || ev.event || '';
+      if (title) {
+        await this.createTimelineEvent(bookId, {
+          chapterId: '',
+          chapterNumber: ev.chapterNumber || ev.chapter_number || 1,
+          title,
+          description: ev.description || ev.summary || '',
+          location: ev.location || undefined,
+          participants: ev.participants || (ev.characters ? ev.characters : []),
+          significance: ev.significance || 'Major',
+          timePassedNote: ev.timePassedNote || ev.time_passed_note || undefined,
+          currentArc: ev.currentArc || ev.current_arc || 'Main Arc'
+        });
+      }
+    }
+
     this.notifyDataChanged();
     return true;
   }

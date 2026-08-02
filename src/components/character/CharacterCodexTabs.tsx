@@ -2,7 +2,7 @@ import React from 'react';
 import { Character, Ability, Item, Relationship, DialogueFactEntity } from '@/types';
 import {
   UserCheck, Users, Zap, Heart, Package, Shield, History, MessageSquare, Tag,
-  Sparkles, Award, FileText, CheckCircle2
+  Sparkles, Award, FileText, CheckCircle2, Bookmark, Clock
 } from 'lucide-react';
 
 /**
@@ -43,6 +43,29 @@ export interface CharacterCodexTabsProps {
 }
 
 /**
+ * Helper to check if a given target string matches selected character's name or aliases
+ */
+function checkNameMatch(targetName?: string, selectedChar?: Character): boolean {
+  if (!targetName || !selectedChar) return false;
+  const target = targetName.trim().toLowerCase();
+  const charName = selectedChar.name.trim().toLowerCase();
+  if (target === charName) return true;
+  if (charName.includes(target) || target.includes(charName)) return true;
+  return (selectedChar.aliases || []).some(alias => alias.trim().toLowerCase() === target || alias.trim().toLowerCase().includes(target));
+}
+
+/**
+ * Helper to extract or parse chapter mark from a fact string
+ */
+function parseFactChapterMark(factStr: string): { chapterTag: string; cleanFact: string } {
+  const match = factStr.match(/^\[?(?:Ch|Chapter|Chap)\s*(\d+)\]?:?\s*(.*)$/i);
+  if (match) {
+    return { chapterTag: `Chapter ${match[1]}`, cleanFact: match[2] };
+  }
+  return { chapterTag: 'Chapter 1', cleanFact: factStr };
+}
+
+/**
  * Character Codex Tab Navigation and detailed content tabs for physical appearance, RPG stats, inventory, timeline, dialogue, and author notes.
  */
 export function CharacterCodexTabs(props: CharacterCodexTabsProps) {
@@ -73,6 +96,8 @@ export function CharacterCodexTabs(props: CharacterCodexTabsProps) {
   const onAddNote = props.onAddNote || props.handleAddAuthorNote || (() => {});
   const onDeleteNote = props.onDeleteNote || props.handleDeleteAuthorNote || (() => {});
   const query = dossierSearchQuery.toLowerCase();
+
+  const isMatch = (targetName?: string) => checkNameMatch(targetName, selectedChar);
 
   return (
     <div className="space-y-4">
@@ -111,9 +136,13 @@ export function CharacterCodexTabs(props: CharacterCodexTabsProps) {
       {/* Tab 1: Overview */}
       {activeTab === 'overview' && (
         <div className="space-y-4 text-xs">
+          {/* Chapter-Marked Synopsis & Biography */}
           <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] space-y-2">
-            <h3 className="font-bold text-[#a78bfa] uppercase tracking-wider text-[10px]">Synopsis &amp; Biography</h3>
-            <p className="text-[#a1a1aa] leading-relaxed">{selectedChar.summary || 'No biography recorded.'}</p>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-[#a78bfa] uppercase tracking-wider text-[10px]">Synopsis &amp; Biography (Chapter Marked)</h3>
+              <span className="px-2 py-0.5 rounded bg-[#7c3aed]/20 text-[#a78bfa] font-mono text-[9px] font-bold">Latest Chapter Record</span>
+            </div>
+            <p className="text-[#a1a1aa] leading-relaxed whitespace-pre-line">{selectedChar.summary || 'No biography recorded.'}</p>
           </div>
 
           {/* Dynamic Novel Attributes Grid */}
@@ -156,17 +185,22 @@ export function CharacterCodexTabs(props: CharacterCodexTabsProps) {
             </div>
           </div>
 
-          {/* Explicit Known Facts Stream */}
+          {/* Chapter-Marked Verified Known Facts */}
           {selectedChar.knownFacts && selectedChar.knownFacts.length > 0 && (
             <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] space-y-2">
-              <h3 className="font-bold text-[#a78bfa] uppercase tracking-wider text-[10px]">Verified Canonical Facts</h3>
-              <div className="space-y-1.5">
-                {selectedChar.knownFacts.map((fact, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-white text-xs">
-                    <span className="text-amber-400 font-bold">•</span>
-                    <span>{fact}</span>
-                  </div>
-                ))}
+              <h3 className="font-bold text-[#a78bfa] uppercase tracking-wider text-[10px]">Verified Canonical Facts (Chapter Sorted)</h3>
+              <div className="space-y-2">
+                {selectedChar.knownFacts.map((rawFact, idx) => {
+                  const { chapterTag, cleanFact } = parseFactChapterMark(rawFact);
+                  return (
+                    <div key={idx} className="flex items-start gap-2.5 p-2 rounded-lg bg-[#121218] border border-[#232334] text-white text-xs">
+                      <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-[#7c3aed]/20 text-[#a78bfa] border border-[#7c3aed]/40 shrink-0 font-mono">
+                        {chapterTag}
+                      </span>
+                      <span>{cleanFact}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -180,19 +214,31 @@ export function CharacterCodexTabs(props: CharacterCodexTabsProps) {
         </div>
       )}
 
-      {/* Tab 2: Physical Appearance */}
+      {/* Tab 2: Physical Appearance & Attire (Marked by Chapter) */}
       {activeTab === 'physical' && (
         <div className="space-y-4 text-xs">
-          <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] space-y-2">
-            <h3 className="font-bold text-cyan-400 uppercase tracking-wider text-[10px]">Explicit Stated Appearance Facts</h3>
+          <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] space-y-3">
+            <div className="flex items-center justify-between border-b border-[#232334] pb-2">
+              <h3 className="font-bold text-cyan-400 uppercase tracking-wider text-[10px]">
+                Explicit Stated Appearance &amp; Attire Facts (Marked by Chapter)
+              </h3>
+              <span className="text-[10px] text-[#8e8ea0] font-mono">Chronological Progression</span>
+            </div>
+
             {selectedChar.explicitAppearanceFacts && selectedChar.explicitAppearanceFacts.length > 0 ? (
               <div className="space-y-2">
-                {selectedChar.explicitAppearanceFacts.map((trait, idx) => (
-                  <div key={idx} className="flex items-center gap-2 p-2.5 rounded-lg bg-[#121218] border border-[#232334] text-white">
-                    <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                    <span>{trait}</span>
-                  </div>
-                ))}
+                {selectedChar.explicitAppearanceFacts.map((trait, idx) => {
+                  const { chapterTag, cleanFact } = parseFactChapterMark(trait);
+                  return (
+                    <div key={idx} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-[#121218] border border-[#232334] text-white">
+                      <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0 font-mono">
+                        {chapterTag}
+                      </span>
+                      <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span>{cleanFact}</span>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-[#8e8ea0] italic">No explicit physical appearance traits stated in chapter prose yet.</p>
@@ -239,28 +285,44 @@ export function CharacterCodexTabs(props: CharacterCodexTabsProps) {
       {activeTab === 'stats' && (
         <div className="space-y-4 text-xs">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 font-mono">
-            {selectedChar.level && (
-              <div className="p-3 rounded-xl bg-[#181820] border border-amber-500/30">
-                <div className="text-[10px] text-amber-400 uppercase">Power Level</div>
-                <div className="font-bold text-white text-sm mt-0.5">Level {selectedChar.level}</div>
-              </div>
-            )}
-            {selectedChar.className && (
-              <div className="p-3 rounded-xl bg-[#181820] border border-purple-500/30">
-                <div className="text-[10px] text-purple-400 uppercase">System Class</div>
-                <div className="font-bold text-white text-sm mt-0.5">{selectedChar.className}</div>
-              </div>
-            )}
+            <div className="p-3 rounded-xl bg-[#181820] border border-amber-500/30">
+              <div className="text-[10px] text-amber-400 uppercase">Power Level</div>
+              <div className="font-bold text-white text-sm mt-0.5">Level {selectedChar.level || 1}</div>
+            </div>
+            <div className="p-3 rounded-xl bg-[#181820] border border-purple-500/30">
+              <div className="text-[10px] text-purple-400 uppercase">System Class</div>
+              <div className="font-bold text-white text-sm mt-0.5">{selectedChar.className || 'None / Civilian'}</div>
+            </div>
+            <div className="p-3 rounded-xl bg-[#181820] border border-cyan-500/30">
+              <div className="text-[10px] text-cyan-400 uppercase">Species</div>
+              <div className="font-bold text-white text-sm mt-0.5">{selectedChar.species || 'Human'}</div>
+            </div>
           </div>
 
+          {/* Dynamic System Attributes */}
+          {selectedChar.dynamicAttributes && Object.keys(selectedChar.dynamicAttributes).length > 0 && (
+            <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] space-y-3">
+              <h3 className="font-bold text-amber-400 uppercase tracking-wider text-[10px]">System Attributes &amp; Dynamic Values</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 font-mono">
+                {Object.entries(selectedChar.dynamicAttributes).map(([key, val]) => (
+                  <div key={key} className="p-3 rounded-xl bg-[#121218] border border-amber-500/20">
+                    <div className="text-[10px] text-amber-400 font-extrabold uppercase">{key}</div>
+                    <div className="font-bold text-white text-xs mt-0.5">{String(val)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Progression Timeline Stream */}
           {selectedChar.progressionHistory && selectedChar.progressionHistory.length > 0 ? (
             <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] space-y-2">
-              <h3 className="font-bold text-amber-400 uppercase tracking-wider text-[10px]">Progression Timeline</h3>
+              <h3 className="font-bold text-amber-400 uppercase tracking-wider text-[10px]">Stat &amp; Attribute Progression History</h3>
               <div className="space-y-2">
                 {selectedChar.progressionHistory.map((p, idx) => (
                   <div key={idx} className="p-3 rounded-lg bg-[#121218] border border-[#232334] flex items-center justify-between text-xs font-mono">
                     <div>
-                      <span className="text-[#a78bfa] font-bold">Ch {p.chapterNumber}:</span>
+                      <span className="text-[#a78bfa] font-bold">Chapter {p.chapterNumber}:</span>
                       <span className="text-white ml-2">{p.attribute}</span>
                     </div>
                     <div className="text-amber-400 font-bold">{p.oldValue} → {p.newValue}</div>
@@ -271,67 +333,6 @@ export function CharacterCodexTabs(props: CharacterCodexTabsProps) {
           ) : (
             <div className="p-6 text-center text-[#8e8ea0] italic bg-[#181820] rounded-xl border border-[#232334]">
               No progression history entries recorded.
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab: Story Timeline */}
-      {activeTab === 'history' && (
-        <div className="space-y-4 text-xs">
-          <h3 className="font-bold text-white flex items-center gap-2">
-            <History className="w-4 h-4 text-[#7c3aed]" /> Character Chapter Progression &amp; Timeline
-          </h3>
-
-          {/* Chapter Progression History Stream */}
-          {selectedChar.progressionHistory && selectedChar.progressionHistory.length > 0 ? (
-            <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] space-y-3">
-              <h4 className="font-bold text-[#a78bfa] uppercase tracking-wider text-[10px]">
-                Chapter Milestone Events
-              </h4>
-              <div className="space-y-2 relative border-l-2 border-[#7c3aed]/40 pl-4 ml-2">
-                {selectedChar.progressionHistory.map((p, idx) => (
-                  <div key={idx} className="relative p-3 rounded-lg bg-[#121218] border border-[#232334] font-mono text-xs">
-                    <div className="absolute -left-[23px] top-3.5 w-2.5 h-2.5 rounded-full bg-[#7c3aed]" />
-                    <div className="flex items-center justify-between">
-                      <span className="text-[#a78bfa] font-bold">Chapter {p.chapterNumber}</span>
-                      {p.attribute && <span className="text-white font-bold">{p.attribute}</span>}
-                    </div>
-                    {(p.oldValue || p.newValue) && (
-                      <div className="text-amber-400 text-[11px] mt-1 font-bold">
-                        {p.oldValue ? `${p.oldValue} → ` : ''}{p.newValue}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="p-6 text-center text-[#8e8ea0] italic bg-[#181820] rounded-xl border border-[#232334]">
-              No chapter progression timeline recorded for {selectedChar.name}.
-            </div>
-          )}
-
-          {/* Dialogue Facts for this Character */}
-          {dialogueFacts && dialogueFacts.filter(df => df.speaker === selectedChar.name || df.recipient === selectedChar.name).length > 0 && (
-            <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] space-y-3">
-              <h4 className="font-bold text-amber-400 uppercase tracking-wider text-[10px]">
-                Recorded Dialogue Commitments &amp; Statements
-              </h4>
-              <div className="space-y-2">
-                {dialogueFacts.filter(df => df.speaker === selectedChar.name || df.recipient === selectedChar.name).map((df, idx) => (
-                  <div key={idx} className="p-3 rounded-lg bg-[#121218] border border-[#232334] flex items-center justify-between text-xs">
-                    <div>
-                      <span className="font-bold text-white">{df.speaker}</span>
-                      {df.recipient && <span className="text-[#8e8ea0]"> → {df.recipient}</span>}
-                      <p className="text-[#a1a1aa] text-[11px] mt-0.5">"{df.fact}"</p>
-                    </div>
-                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-[#7c3aed]/20 text-[#a78bfa]">
-                      Ch {df.chapterNumber} • {df.type}
-                    </span>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
         </div>
@@ -397,61 +398,177 @@ export function CharacterCodexTabs(props: CharacterCodexTabsProps) {
             </div>
           )}
 
-          {relationships.filter(r => r.character1Name === selectedChar.name || r.character2Name === selectedChar.name)
-            .filter(r => !query || r.character1Name.toLowerCase().includes(query) || r.character2Name.toLowerCase().includes(query) || r.relationType.toLowerCase().includes(query) || r.description.toLowerCase().includes(query))
+          {relationships.filter(r => isMatch(r.character1Name) || isMatch(r.character2Name))
+            .filter(r => !query || r.character1Name.toLowerCase().includes(query) || r.character2Name.toLowerCase().includes(query) || r.relationType.toLowerCase().includes(query) || (r.description || '').toLowerCase().includes(query))
             .map(r => (
             <div key={r.id} className="p-3 rounded-xl bg-[#181820] border border-[#232334] flex items-center justify-between">
               <div>
                 <div className="font-bold text-white">
-                  {r.character1Name === selectedChar.name ? r.character2Name : r.character1Name}
+                  {isMatch(r.character1Name) ? r.character2Name : r.character1Name}
                   <span className="ml-2 text-xs text-[#a78bfa]">({r.relationType})</span>
                 </div>
                 {r.description && <div className="text-[#8e8ea0] text-[11px] mt-0.5">{r.description}</div>}
               </div>
-              <button
-                onClick={() => onDeleteRelationship(r.id)}
-                className="text-[#8e8ea0] hover:text-red-400 text-xs"
-              >
-                Remove
-              </button>
+              <button onClick={() => onDeleteRelationship(r.id)} className="text-[#8e8ea0] hover:text-red-400 text-xs">Remove</button>
             </div>
           ))}
         </div>
       )}
 
-      {/* Tab 5: Inventory & Weapons */}
+      {/* Tab 5: Inventory & Weapons (Flexible Owner Matcher) */}
       {activeTab === 'inventory' && (
         <div className="space-y-3 text-xs">
-          <h3 className="font-bold text-white">Owned Items &amp; Artifacts</h3>
-          {items.filter(i => i.ownerCharacterName === selectedChar.name)
-            .filter(i => !query || i.name.toLowerCase().includes(query) || (i.description || '').toLowerCase().includes(query))
-            .map(item => (
-            <div key={item.id} className="p-3 rounded-xl bg-[#181820] border border-[#232334] flex items-center justify-between">
-              <div>
-                <div className="font-bold text-emerald-400">{item.name} <span className="text-[10px] text-[#8e8ea0]">({item.type})</span></div>
-                <div className="text-[#a1a1aa] text-[11px] mt-0.5">{item.description}</div>
+          <h3 className="font-bold text-white">Owned Items, Relics &amp; Possessions</h3>
+          {items.filter(item => isMatch(item.ownerCharacterName))
+            .filter(item => !query || item.name.toLowerCase().includes(query) || (item.description || '').toLowerCase().includes(query))
+            .length === 0 ? (
+              <div className="p-6 text-center text-[#8e8ea0] italic bg-[#181820] rounded-xl border border-[#232334]">
+                No items or weapons associated with {selectedChar.name}.
               </div>
-            </div>
-          ))}
+            ) : (
+              items.filter(item => isMatch(item.ownerCharacterName))
+                .filter(item => !query || item.name.toLowerCase().includes(query) || (item.description || '').toLowerCase().includes(query))
+                .map(item => (
+                  <div key={item.id} className="p-3.5 rounded-xl bg-[#181820] border border-cyan-500/30 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-cyan-300 text-sm flex items-center gap-2">
+                        <Package className="w-4 h-4 text-cyan-400" />
+                        <span>{item.name}</span>
+                        <span className="px-2 py-0.5 rounded text-[10px] bg-[#121218] border border-[#232334] text-[#8e8ea0] uppercase font-mono">
+                          {item.type}
+                        </span>
+                      </div>
+                      <p className="text-[#a1a1aa] text-xs mt-1">{item.description || 'No item details recorded.'}</p>
+                    </div>
+                  </div>
+                ))
+            )}
         </div>
       )}
 
       {/* Tab 6: Abilities & Skills */}
       {activeTab === 'abilities' && (
         <div className="space-y-3 text-xs">
-          <h3 className="font-bold text-white">Associated Abilities &amp; Magic</h3>
-          {abilities.filter(a => a.userCharacterNames?.includes(selectedChar.name))
-            .filter(a => !query || a.name.toLowerCase().includes(query) || (a.description || '').toLowerCase().includes(query))
-            .map(ab => (
-            <div key={ab.id} className="p-3 rounded-xl bg-[#181820] border border-[#232334]">
-              <div className="font-bold text-[#a78bfa]">{ab.name} <span className="text-[10px] text-[#8e8ea0]">({ab.category})</span></div>
-              <div className="text-[#a1a1aa] text-[11px] mt-0.5">{ab.description}</div>
-            </div>
-          ))}
+          <h3 className="font-bold text-white">Associated Abilities &amp; Magic Skills</h3>
+          {abilities.filter(ab => ab.userCharacterNames?.some(u => isMatch(u)))
+            .filter(ab => !query || ab.name.toLowerCase().includes(query) || (ab.description || '').toLowerCase().includes(query))
+            .length === 0 ? (
+              <div className="p-6 text-center text-[#8e8ea0] italic bg-[#181820] rounded-xl border border-[#232334]">
+                No abilities or skills associated with {selectedChar.name}.
+              </div>
+            ) : (
+              abilities.filter(ab => ab.userCharacterNames?.some(u => isMatch(u)))
+                .filter(ab => !query || ab.name.toLowerCase().includes(query) || (ab.description || '').toLowerCase().includes(query))
+                .map(ab => (
+                  <div key={ab.id} className="p-3.5 rounded-xl bg-[#181820] border border-amber-500/30 space-y-1">
+                    <div className="font-bold text-amber-300 text-sm flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-400" />
+                      <span>{ab.name}</span>
+                      <span className="px-2 py-0.5 rounded text-[10px] bg-[#121218] border border-[#232334] text-[#8e8ea0] uppercase font-mono">
+                        {ab.category}
+                      </span>
+                    </div>
+                    <div className="text-[#a1a1aa] text-xs mt-0.5">{ab.description || 'No skill description recorded.'}</div>
+                  </div>
+                ))
+            )}
         </div>
       )}
 
-      {/* Tab 7: Author Notes */}
+      {/* Tab 7: Story Timeline */}
+      {activeTab === 'history' && (
+        <div className="space-y-4 text-xs">
+          <h3 className="font-bold text-white flex items-center gap-2">
+            <History className="w-4 h-4 text-[#7c3aed]" /> Character Chapter Progression &amp; Timeline
+          </h3>
+
+          {/* Chapter Progression History Stream */}
+          {selectedChar.progressionHistory && selectedChar.progressionHistory.length > 0 ? (
+            <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] space-y-3">
+              <h4 className="font-bold text-[#a78bfa] uppercase tracking-wider text-[10px]">
+                Chapter Milestone Events
+              </h4>
+              <div className="space-y-2 relative border-l-2 border-[#7c3aed]/40 pl-4 ml-2">
+                {selectedChar.progressionHistory.map((p, idx) => (
+                  <div key={idx} className="relative p-3 rounded-lg bg-[#121218] border border-[#232334] font-mono text-xs">
+                    <div className="absolute -left-[23px] top-3.5 w-2.5 h-2.5 rounded-full bg-[#7c3aed]" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#a78bfa] font-bold">Chapter {p.chapterNumber}</span>
+                      {p.attribute && <span className="text-white font-bold">{p.attribute}</span>}
+                    </div>
+                    {(p.oldValue || p.newValue) && (
+                      <div className="text-amber-400 text-[11px] mt-1 font-bold">
+                        {p.oldValue ? `${p.oldValue} → ` : ''}{p.newValue}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 text-center text-[#8e8ea0] italic bg-[#181820] rounded-xl border border-[#232334]">
+              No chapter progression timeline recorded for {selectedChar.name}.
+            </div>
+          )}
+
+          {/* Dialogue Facts for this Character */}
+          {dialogueFacts && dialogueFacts.filter(df => isMatch(df.speaker) || isMatch(df.recipient)).length > 0 && (
+            <div className="p-4 rounded-xl bg-[#181820] border border-[#232334] space-y-3">
+              <h4 className="font-bold text-amber-400 uppercase tracking-wider text-[10px]">
+                Recorded Dialogue Commitments &amp; Statements
+              </h4>
+              <div className="space-y-2">
+                {dialogueFacts.filter(df => isMatch(df.speaker) || isMatch(df.recipient)).map((df, idx) => (
+                  <div key={idx} className="p-3 rounded-lg bg-[#121218] border border-[#232334] flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-bold text-white">{df.speaker}</span>
+                      {df.recipient && <span className="text-[#8e8ea0]"> → {df.recipient}</span>}
+                      <p className="text-[#a1a1aa] text-[11px] mt-0.5">"{df.fact}"</p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-[#7c3aed]/20 text-[#a78bfa]">
+                      Ch {df.chapterNumber} • {df.type}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 8: Dialogue Facts */}
+      {activeTab === 'dialogue' && (
+        <div className="space-y-3 text-xs">
+          <h3 className="font-bold text-white">Dialogue Statements &amp; Verbal Commitments</h3>
+          {dialogueFacts && dialogueFacts.filter(df => isMatch(df.speaker) || isMatch(df.recipient)).length === 0 ? (
+            <div className="p-6 text-center text-[#8e8ea0] italic bg-[#181820] rounded-xl border border-[#232334]">
+              No dialogue facts or verbal statements recorded for {selectedChar.name}.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {dialogueFacts.filter(df => isMatch(df.speaker) || isMatch(df.recipient))
+                .filter(df => !query || df.fact.toLowerCase().includes(query) || df.speaker.toLowerCase().includes(query) || (df.recipient || '').toLowerCase().includes(query))
+                .map((df, idx) => (
+                  <div key={idx} className="p-3.5 rounded-xl bg-[#181820] border border-[#232334] flex items-center justify-between text-xs">
+                    <div>
+                      <div className="flex items-center gap-2 text-white font-bold">
+                        <MessageSquare className="w-3.5 h-3.5 text-[#a78bfa]" />
+                        <span>{df.speaker}</span>
+                        {df.recipient && <span className="text-[#8e8ea0]">→ {df.recipient}</span>}
+                      </div>
+                      <p className="text-[#a1a1aa] text-xs mt-1 italic">"{df.fact}"</p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded bg-[#121218] border border-[#232334] text-[#a78bfa] font-mono text-[10px] font-bold uppercase shrink-0">
+                      Ch {df.chapterNumber} • {df.type}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 9: Author Notes */}
       {activeTab === 'notes' && (
         <div className="space-y-3 text-xs">
           <h3 className="font-bold text-white">Author Notes &amp; Private Ideas</h3>

@@ -127,6 +127,46 @@ export class CharacterRepository {
           primary.explicitAppearanceFacts = Array.from(new Set([...(primary.explicitAppearanceFacts || []), ...(secondary.explicitAppearanceFacts || [])]));
           primary.aliases = Array.from(new Set([...(primary.aliases || []), secondary.name, ...(secondary.aliases || [])]));
           primary.dynamicAttributes = { ...(primary.dynamicAttributes || {}), ...(secondary.dynamicAttributes || {}) };
+
+          // Re-link items, abilities, relationships, and dialogue facts from secondary name to primary name
+          try {
+            const allItems = await indexedDBAdapter.getAllByBookId<any>('items', bookId);
+            for (const item of allItems) {
+              if (item.ownerCharacterName === secondary.name) {
+                await indexedDBAdapter.save('items', { ...item, ownerCharacterName: primary.name });
+              }
+            }
+            const allAbilities = await indexedDBAdapter.getAllByBookId<any>('abilities', bookId);
+            for (const ab of allAbilities) {
+              if (ab.userCharacterNames?.includes(secondary.name)) {
+                const updatedUsers = Array.from(new Set(ab.userCharacterNames.map((u: string) => u === secondary.name ? primary.name : u)));
+                await indexedDBAdapter.save('abilities', { ...ab, userCharacterNames: updatedUsers });
+              }
+            }
+            const allRels = await indexedDBAdapter.getAllByBookId<any>('relationships', bookId);
+            for (const rel of allRels) {
+              let updated = false;
+              let c1 = rel.character1Name;
+              let c2 = rel.character2Name;
+              if (c1 === secondary.name) { c1 = primary.name; updated = true; }
+              if (c2 === secondary.name) { c2 = primary.name; updated = true; }
+              if (updated) {
+                await indexedDBAdapter.save('relationships', { ...rel, character1Name: c1, character2Name: c2 });
+              }
+            }
+            const allDfs = await indexedDBAdapter.getAllByBookId<any>('dialogue_facts', bookId);
+            for (const df of allDfs) {
+              let updated = false;
+              let spk = df.speaker;
+              let rec = df.recipient;
+              if (spk === secondary.name) { spk = primary.name; updated = true; }
+              if (rec === secondary.name) { rec = primary.name; updated = true; }
+              if (updated) {
+                await indexedDBAdapter.save('dialogue_facts', { ...df, speaker: spk, recipient: rec });
+              }
+            }
+          } catch (e) { /* ignore */ }
+
           await indexedDBAdapter.delete('characters', secondary.id);
         }
         await indexedDBAdapter.save('characters', primary);
