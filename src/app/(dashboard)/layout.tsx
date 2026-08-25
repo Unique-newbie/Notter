@@ -2,12 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Header } from '@/components/layout/Header';
 import { ThemeProvider } from '@/lib/theme/ThemeContext';
 import { CommandPalette } from '@/components/common/CommandPalette';
 import { useParams, useRouter } from 'next/navigation';
-
-import { OfflineBanner } from '@/components/common/OfflineBanner';
+import { SupportBanner } from '@/components/layout/SupportBanner';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -33,7 +31,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <ThemeProvider>
       <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--bg-main)] text-[var(--text-main)] transition-colors">
-        <OfflineBanner />
+
+        <SupportBanner />
+
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <Sidebar
             collapsed={collapsed}
@@ -41,10 +41,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             activeBookId={activeBookId}
           />
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <Header
-              activeBookId={activeBookId}
-              onSelectBook={(bookId) => router.push(`/books/${bookId}`)}
-            />
             <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-[var(--bg-main)] text-[var(--text-main)]">
               {children}
             </main>
