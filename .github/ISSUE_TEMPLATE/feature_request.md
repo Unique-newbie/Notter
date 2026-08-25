@@ -1,18 +1,26 @@
-name: Feature Request
-description: Suggest an idea for this project
-title: "[FEATURE] "
-labels: ["enhancement"]
-assignees: ""
 ---
 
-## Is your feature request related to a problem? Please describe.
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+name: Feature Request
+description: Suggest an improvement or new idea for Notter
+title: "[Feature] "
+labels: ["enhancement"]
+assignees: []
+-------------
 
-## Describe the solution you'd like
-A clear and concise description of what you want to happen.
+## Problem
 
-## Describe alternatives you've considered
-A clear and concise description of any alternative solutions or features you've considered.
+What problem would this feature solve?
+
+Describe the situation, limitation, or difficulty you're experiencing.
+
+## Proposed solution
+
+Describe what you'd like Notter to do.
+
+## Alternatives
+
+If you considered other approaches, describe them here.
 
 ## Additional context
-Add any other context or screenshots about the feature request here.
+
+Add any screenshots, examples, references, or other information that may help explain the idea.

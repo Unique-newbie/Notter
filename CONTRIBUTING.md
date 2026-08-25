@@ -1,46 +1,110 @@
-# Contributing to NotterPad
+# Contributing to Notter
 
-First, thank you for considering contributing to NotterPad! It's people like you that make NotterPad an incredible open-source tool for writers.
+Thank you for contributing to Notter.
 
-## Code of Conduct
-
-By participating in this project, you agree to abide by our Code of Conduct. Please ensure your interactions are respectful and constructive.
+Notter is an open-source project, and contributions of all kinds are welcome, including bug fixes, features, documentation, and improvements.
 
 ## Getting Started
 
-1. **Find an Issue**: Check the issue tracker for `good first issue` or `help wanted` labels.
-2. **Setup Environment**: Follow the instructions in `INSTALLATION.md` to get your local development environment running.
-3. **Discuss**: If you plan to make a significant change, please open an issue to discuss it first.
+1. Check the [issue tracker](https://github.com/Unique-newbie/Notter/issues) for existing issues.
+2. For significant changes, open or comment on an issue before starting work.
+3. Fork the repository or create a branch if you have repository access.
+4. Set up the project locally and make your changes.
+5. Submit a pull request targeting the `dev` branch.
 
-## Branch Naming Conventions
+## Branches
 
-Please use the following conventions for your branch names:
-- `feature/your-feature-name` (for new features)
-- `fix/issue-description` (for bug fixes)
-- `docs/what-you-documented` (for documentation updates)
+* `main` — Production
+* `dev` — Development and integration testing
 
-## Commit Message Standards
+Create a branch from `dev` for your work.
 
-We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
-- `feat: add custom schema fields`
-- `fix: resolve IndexedDB synchronization issue`
-- `docs: update roadmap`
-- `chore: update dependencies`
+Recommended naming:
 
-## Code Quality & TypeScript Rules
+* `feature/<name>` — New features
+* `fix/<name>` — Bug fixes
+* `docs/<name>` — Documentation
+* `refactor/<name>` — Refactoring or maintenance
 
-NotterPad uses strict TypeScript to ensure codebase integrity.
-- Ensure all types are properly defined. Avoid `any`.
-- Run type-checking locally before committing:
-  ```bash
-  npx tsc --noEmit
-  ```
-- Adhere to the existing ESLint and Prettier configurations. Run `npm run lint` to verify.
+Example:
 
-## Pull Request Process
+```bash
+git checkout dev
+git pull
+git checkout -b feature/my-feature
+```
 
-1. Ensure your code passes all linting and type checks.
-2. Update relevant documentation (README, API docs) if necessary.
-3. Open a Pull Request against the `main` branch.
-4. Fill out the provided PR template completely.
-5. Await review from maintainers. Be prepared to address feedback!
+## Commits
+
+Use clear, concise commit messages. Conventional Commits are recommended.
+
+Examples:
+
+```text
+feat: add character relationship view
+fix: resolve duplicate entity merging
+docs: update installation guide
+refactor: simplify canon parser
+chore: update dependencies
+```
+
+## Pull Requests
+
+All changes to `dev` and `main` must go through pull requests.
+
+The usual workflow is:
+
+```text
+Feature branch
+      ↓
+Pull Request → dev
+      ↓
+Vercel Preview
+      ↓
+Review and testing
+      ↓
+Merge → dev
+      ↓
+Integration testing
+      ↓
+Pull Request → main
+      ↓
+Merge → main
+      ↓
+Production
+```
+
+When opening a pull request:
+
+* Clearly describe what changed and why.
+* Link related issues when applicable.
+* Explain how the changes were tested.
+* Include screenshots or recordings for UI changes.
+* Address review comments before merging.
+
+Pull requests are squash-merged into the target branch.
+
+## Code Quality
+
+Before submitting a pull request, run the project's available checks locally.
+
+```bash
+npm run lint
+npx tsc --noEmit
+```
+
+Follow the existing TypeScript, ESLint, and formatting conventions. Avoid introducing `any` unless there is a clear reason.
+
+## Documentation
+
+Update relevant documentation when a change affects how Notter works or how users interact with it.
+
+User documentation is maintained at:
+
+**https://docs.notterpad.in**
+
+## Questions
+
+If you're unsure about an implementation or contribution, open an issue or start a discussion before making a significant change.
+
+Thank you for helping improve Notter.
