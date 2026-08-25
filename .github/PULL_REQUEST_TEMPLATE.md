@@ -1,24 +1,36 @@
 ## Summary
-<!-- Describe the changes introduced by this pull request. What is the problem being solved? -->
+
+<!-- Briefly describe what this PR changes and why. -->
 
 ## Type of Change
-<!-- Please check the one that applies to this PR using "x". -->
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
-- [ ] Refactoring / Maintenance
+
+<!-- Check all that apply. -->
+
+* [ ] Bug fix
+* [ ] New feature
+* [ ] Breaking change
+* [ ] Documentation
+* [ ] Refactoring / Maintenance
 
 ## Related Issues
-<!-- Link to any related issues. Example: "Closes #123" -->
+
+<!-- Link related issues, if any. Example: Closes #123 -->
+
+## Testing
+
+<!-- Describe how you tested the changes. Include relevant test steps or scenarios. -->
+
+## Screenshots
+
+<!-- Add screenshots or recordings if the changes affect the UI. -->
 
 ## Checklist
-<!-- Review this checklist before marking the PR as ready. -->
-- [ ] My code follows the style guidelines of this project.
-- [ ] I have performed a self-review of my own code.
-- [ ] I have commented my code, particularly in hard-to-understand areas.
-- [ ] I have made corresponding changes to the documentation.
-- [ ] My changes generate no new warnings or errors.
 
-## Verification Steps
-<!-- Describe how the maintainers can test your changes. Include any relevant configuration or testing data. -->
+* [ ] I have tested my changes.
+* [ ] I have reviewed my own changes.
+* [ ] My changes do not introduce known errors or warnings.
+* [ ] I have updated relevant documentation, if necessary.
+
+## Additional Notes
+
+<!-- Add anything else maintainers should know when reviewing this PR. -->
