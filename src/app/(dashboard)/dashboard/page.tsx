@@ -6,7 +6,6 @@ import { BookOpen, Layers, Clock, ArrowRight, FileText, Flame, Star, Archive, Ro
 import { repository } from '@/lib/store/repository';
 import { sprintStore } from '@/lib/store/sprintStore';
 import { Book } from '@/types';
-import { AnnouncementBar } from "@/app/(dashboard)/about/AnnouncementBar";
 
 interface ProcessedBook extends Book {
   calculatedChapterCount: number;
@@ -97,216 +96,448 @@ export default function DashboardPage() {
   const totalWords = books.reduce((acc, b) => acc + b.calculatedWordCount, 0);
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-12">
+    <div className="mx-auto w-full max-w-7xl space-y-10 pb-12">
 
-      <AnnouncementBar />
+      {/* ─────────────────────────────────────────────
+          HEADER
+      ───────────────────────────────────────────── */}
+      <section className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-[#8e8ea0]">
+            Your writing workspace
+          </p>
 
-      {/* Welcome Banner with Quick Continue Card */}
-        <div className="relative z-10 w-full">
-        <div className="p-8 rounded-2xl bg-gradient-to-r from-[#121218] via-[#1a102f] to-[#121218] border border-[#7c3aed]/30 relative overflow-hidden shadow-purple flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-        <div className="relative z-10 max-w-2xl">
-          <h1 className="text-3xl font-extrabold tracking-tight text-white">
-            Welcome back to <span className="purple-gradient-text">Notter</span>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            Welcome back to{" "}
+            <span className="text-[#a78bfa]">Notter.</span>
           </h1>
-          <p className="text-sm text-[#a1a1aa] mt-2 leading-relaxed">
-            Distraction-free novel drafting and automatic Story Bible entity extraction.
+
+          <p className="mt-2 max-w-xl text-sm leading-6 text-[#71717a]">
+            Pick up where you left off or start something new.
           </p>
         </div>
 
-          <div className="flex flex-col gap-4 w-full lg:w-auto">
-            <div>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/books"
+            className="inline-flex items-center gap-2 rounded-lg border border-[#292932] bg-[#121218] px-4 py-2.5 text-sm font-medium text-[#d4d4d8] transition hover:border-[#3f3f46] hover:bg-[#18181f]"
+          >
+            <BookOpen className="h-4 w-4 text-[#a78bfa]" />
+            Books
+          </Link>
+
+          <Link
+            href="/analytics"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#7c3aed] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#8b5cf6]"
+          >
+            <Flame className="h-4 w-4" />
+            Sprint Mode
+          </Link>
+        </div>
+      </section>
+
+
+      {/* ─────────────────────────────────────────────
+          CONTINUE WRITING
+      ───────────────────────────────────────────── */}
+      <section className="overflow-hidden rounded-2xl border border-[#292932] bg-[#101014]">
+
+        <div className="flex flex-col lg:flex-row">
+
+          <div className="flex-1 p-7 sm:p-9">
+
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#a78bfa]">
+              <Clock className="h-3.5 w-3.5" />
+              Continue writing
+            </div>
+
+            {lastEditedChapter ? (
+              <>
+                <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">
+                  {lastEditedChapter.title}
+                </h2>
+
+                <p className="mt-2 max-w-lg text-sm leading-6 text-[#71717a]">
+                  Resume your latest chapter and continue exactly where you
+                  left off.
+                </p>
+
+                <Link
+                  href={`/books/${lastEditedChapter.bookId}/chapters?id=${lastEditedChapter.chapterId}`}
+                  className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#7c3aed] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#8b5cf6]"
+                >
+                  <FileText className="h-4 w-4" />
+                  Continue writing
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </>
+            ) : (
+              <>
+                <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">
+                  Your next story starts here.
+                </h2>
+
+                <p className="mt-2 max-w-lg text-sm leading-6 text-[#71717a]">
+                  Create your first book and build your story, chapter by
+                  chapter, without distractions.
+                </p>
+
+                <Link
+                  href="/books"
+                  className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#7c3aed] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#8b5cf6]"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  Create a book
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </>
+            )}
+          </div>
+
+          {/* Quiet visual area */}
+          <div className="flex min-h-[180px] w-full items-center justify-center border-t border-[#292932] bg-[#15151b] lg:w-[34%] lg:border-l lg:border-t-0">
+            <div className="text-center">
+              <BookOpen className="mx-auto h-10 w-10 text-[#3f3f46]" />
+
+              <p className="mt-3 text-xs text-[#52525b]">
+                Your writing space
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+
+      {/* ─────────────────────────────────────────────
+          AT A GLANCE
+      ───────────────────────────────────────────── */}
+      <section>
+
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-[#e4e4e7]">
+            At a glance
+          </h2>
+
+          <Link
+            href="/analytics"
+            className="text-xs font-medium text-[#71717a] transition hover:text-[#a78bfa]"
+          >
+            View analytics
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-[#292932] bg-[#101014] lg:grid-cols-4">
+
+          {/* Books */}
+          <div className="border-b border-[#292932] p-5 lg:border-b-0 lg:border-r">
+            <div className="flex items-center gap-2 text-[#71717a]">
+              <BookOpen className="h-4 w-4 text-[#a78bfa]" />
+              <span className="text-xs">Books</span>
+            </div>
+
+            <p className="mt-3 text-2xl font-semibold tracking-tight text-white">
+              {books.length}
+            </p>
+
+            <p className="mt-1 text-xs text-[#52525b]">
+              Your stories
+            </p>
+          </div>
+
+
+          {/* Chapters */}
+          <div className="border-b border-[#292932] p-5 lg:border-b-0 lg:border-r">
+            <div className="flex items-center gap-2 text-[#71717a]">
+              <FileText className="h-4 w-4 text-[#71717a]" />
+              <span className="text-xs">Chapters</span>
+            </div>
+
+            <p className="mt-3 text-2xl font-semibold tracking-tight text-white">
+              {totalChapters}
+            </p>
+
+            <p className="mt-1 text-xs text-[#52525b]">
+              Tracked chapters
+            </p>
+          </div>
+
+
+          {/* Words */}
+          <div className="border-r border-[#292932] p-5">
+            <div className="flex items-center gap-2 text-[#71717a]">
+              <Layers className="h-4 w-4 text-[#71717a]" />
+              <span className="text-xs">Words extracted</span>
+            </div>
+
+            <p className="mt-3 text-2xl font-semibold tracking-tight text-white">
+              {totalWords.toLocaleString()}
+            </p>
+
+            <p className="mt-1 text-xs text-[#52525b]">
+              Across your books
+            </p>
+          </div>
+
+
+          {/* Favorites */}
+          <div className="p-5">
+            <div className="flex items-center gap-2 text-[#71717a]">
+              <Star className="h-4 w-4 text-amber-400" />
+              <span className="text-xs">Favorites</span>
+            </div>
+
+            <p className="mt-3 text-2xl font-semibold tracking-tight text-white">
+              {favoriteBooks.length}
+            </p>
+
+            <p className="mt-1 text-xs text-[#52525b]">
+              Pinned books
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+
+      {/* ─────────────────────────────────────────────
+          BOOKS
+      ───────────────────────────────────────────── */}
+      <section>
+
+        <div className="mb-5 flex items-end justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-[#e4e4e7]">
+              Your books
+            </h2>
+
+            <p className="mt-1 text-xs text-[#52525b]">
+              Your writing projects
+            </p>
+          </div>
+
+          <Link
+            href="/books"
+            className="inline-flex items-center gap-1 text-xs font-medium text-[#71717a] transition hover:text-[#a78bfa]"
+          >
+            View all
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+
+        {/* Tabs */}
+        <div className="mb-5 flex items-center gap-1 border-b border-[#292932]">
+
+          <button
+            onClick={() => setActiveTab("all")}
+            className={`border-b-2 px-3 py-2.5 text-xs font-medium transition ${
+              activeTab === "all"
+                ? "border-[#8b5cf6] text-white"
+                : "border-transparent text-[#71717a] hover:text-[#d4d4d8]"
+            }`}
+          >
+            All
+            <span className="ml-1.5 text-[#52525b]">
+              {activeBooks.length}
+            </span>
+          </button>
+
+
+          <button
+            onClick={() => setActiveTab("favorites")}
+            className={`border-b-2 px-3 py-2.5 text-xs font-medium transition ${
+              activeTab === "favorites"
+                ? "border-[#8b5cf6] text-white"
+                : "border-transparent text-[#71717a] hover:text-[#d4d4d8]"
+            }`}
+          >
+            Favorites
+            <span className="ml-1.5 text-[#52525b]">
+              {favoriteBooks.length}
+            </span>
+          </button>
+
+
+          <button
+            onClick={() => setActiveTab("archived")}
+            className={`border-b-2 px-3 py-2.5 text-xs font-medium transition ${
+              activeTab === "archived"
+                ? "border-[#8b5cf6] text-white"
+                : "border-transparent text-[#71717a] hover:text-[#d4d4d8]"
+            }`}
+          >
+            Archived
+            <span className="ml-1.5 text-[#52525b]">
+              {archivedBooks.length}
+            </span>
+          </button>
+
+        </div>
+
+
+        {/* Empty state / Books */}
+        {displayBooks.length === 0 ? (
+
+          <div className="flex min-h-[280px] flex-col items-center justify-center rounded-xl border border-dashed border-[#292932] bg-[#101014] px-6 text-center">
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[#292932] bg-[#15151b]">
+              <BookOpen className="h-5 w-5 text-[#52525b]" />
+            </div>
+
+            <h3 className="mt-4 text-sm font-medium text-[#d4d4d8]">
+              {activeTab === "favorites"
+                ? "No favorite books yet"
+                : activeTab === "archived"
+                ? "No archived books"
+                : "Your library is empty"}
+            </h3>
+
+            <p className="mt-1 max-w-sm text-xs leading-5 text-[#52525b]">
+              {activeTab === "favorites"
+                ? "Pin a book to keep it close at hand."
+                : activeTab === "archived"
+                ? "Archived books will appear here."
+                : "Create your first book and start building your story."}
+            </p>
+
+            {activeTab === "all" && (
               <Link
                 href="/books"
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#7c3aed] text-white font-bold text-xs hover:bg-[#6d28d9] transition-all shadow-purple"
+                className="mt-5 inline-flex items-center gap-2 rounded-lg border border-[#3f3f46] bg-[#18181f] px-4 py-2 text-xs font-medium text-[#d4d4d8] transition hover:border-[#7c3aed] hover:text-white"
               >
-                <BookOpen className="w-4 h-4" /> Manage Books
+                <BookOpen className="h-3.5 w-3.5 text-[#a78bfa]" />
+                Create your first book
               </Link>
-            </div>
-            <div>
-              <Link
-                href="/analytics"
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-extrabold text-xs hover:from-amber-600 hover:to-orange-700 transition-all shadow-xl"
+            )}
+
+          </div>
+
+        ) : (
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+
+            {displayBooks.map((book) => (
+
+              <div
+                key={book.id}
+                className="group rounded-xl border border-[#292932] bg-[#101014] p-5 transition hover:border-[#3f3f46] hover:bg-[#141419]"
               >
-                <Flame className="w-4 h-4" /> Sprint Mode 2.0
-              </Link>
-            </div>
-          </div>
-        </div>
 
-        {/* Quick Continue Card */}
-        {lastEditedChapter && (
-          <div className="p-5 rounded-xl bg-[#181820] border border-[#7c3aed]/40 w-full lg:w-80 space-y-3 shrink-0 shadow-2xl">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[#a78bfa] flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5" /> Quick Continue
-            </div>
-            <div>
-              <div className="font-bold text-white text-sm truncate">{lastEditedChapter.title}</div>
-              <div className="text-xs text-[#8e8ea0] mt-0.5">Resume writing where you stopped</div>
-            </div>
-            <Link
-              href={`/books/${lastEditedChapter.bookId}/chapters?id=${lastEditedChapter.chapterId}`}
-              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-[#7c3aed] text-white font-bold text-xs hover:bg-[#6d28d9] transition-all shadow-purple"
-            >
-              <FileText className="w-3.5 h-3.5" /> Continue Writing
-            </Link>
-          </div>
-        )}
-      </div>
+                <div className="flex items-start justify-between gap-4">
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div className="p-5 rounded-xl bg-[#121218] border border-[#232334] flex items-center justify-between">
-          <div>
-            <div className="text-xs font-medium text-[#8e8ea0]">Total Books</div>
-            <div className="text-2xl font-extrabold text-white mt-1">{books.length}</div>
-          </div>
-          <div className="w-10 h-10 rounded-lg bg-[#7c3aed]/10 border border-[#7c3aed]/30 flex items-center justify-center text-[#a78bfa]">
-            <BookOpen className="w-5 h-5" />
-          </div>
-        </div>
+                  <Link
+                    href={`/books/${book.id}`}
+                    className="min-w-0 flex-1"
+                  >
 
-        <div className="p-5 rounded-xl bg-[#121218] border border-[#232334] flex items-center justify-between">
-          <div>
-            <div className="text-xs font-medium text-[#8e8ea0]">Chapters Tracked</div>
-            <div className="text-2xl font-extrabold text-white mt-1">{totalChapters}</div>
-          </div>
-          <div className="w-10 h-10 rounded-lg bg-[#06b6d4]/10 border border-[#06b6d4]/30 flex items-center justify-center text-[#06b6d4]">
-            <FileText className="w-5 h-5" />
-          </div>
-        </div>
+                    <div className="flex items-center gap-2">
 
-        <div className="p-5 rounded-xl bg-[#121218] border border-[#232334] flex items-center justify-between">
-          <div>
-            <div className="text-xs font-medium text-[#8e8ea0]">Total Words Extracted</div>
-            <div className="text-2xl font-extrabold text-white mt-1">{totalWords.toLocaleString()}</div>
-          </div>
-          <div className="w-10 h-10 rounded-lg bg-[#10b981]/10 border border-[#10b981]/30 flex items-center justify-center text-[#10b981]">
-            <Layers className="w-5 h-5" />
-          </div>
-        </div>
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: book.coverColor }}
+                      />
 
-        <div className="p-5 rounded-xl bg-[#121218] border border-[#232334] flex items-center justify-between">
-          <div>
-            <div className="text-xs font-medium text-[#8e8ea0]">Pinned Favorites</div>
-            <div className="text-2xl font-extrabold text-amber-400 mt-1">{favoriteBooks.length}</div>
-          </div>
-          <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-            <Star className="w-5 h-5" />
-          </div>
-        </div>
-      </div>
+                      <span className="truncate text-[11px] font-medium uppercase tracking-wider text-[#52525b]">
+                        {book.genre}
+                      </span>
 
-      {/* Main Grid: Projects & Activity Stream */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Books List Section */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between border-b border-[#232334] pb-3">
-            <div className="flex items-center gap-2 font-bold text-xs">
-              <button
-                onClick={() => setActiveTab('all')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  activeTab === 'all' ? 'bg-[#7c3aed] text-white' : 'text-[#8e8ea0] hover:text-white'
-                }`}
-              >
-                All Projects ({activeBooks.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('favorites')}
-                className={`px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all ${
-                  activeTab === 'favorites' ? 'bg-[#7c3aed] text-white' : 'text-[#8e8ea0] hover:text-white'
-                }`}
-              >
-                <Star className="w-3.5 h-3.5 text-amber-400" /> Favorites ({favoriteBooks.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('archived')}
-                className={`px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all ${
-                  activeTab === 'archived' ? 'bg-[#7c3aed] text-white' : 'text-[#8e8ea0] hover:text-white'
-                }`}
-              >
-                <Archive className="w-3.5 h-3.5 text-cyan-400" /> Archived ({archivedBooks.length})
-              </button>
-            </div>
-
-            <Link href="/books" className="text-xs font-semibold text-[#7c3aed] hover:text-[#a78bfa] flex items-center gap-1">
-              View All <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          {displayBooks.length === 0 ? (
-            <div className="p-8 text-center text-xs text-[#8e8ea0] rounded-xl bg-[#121218] border border-[#232334]">
-              {activeTab === 'favorites' ? 'No pinned favorite projects. Click the star icon on any book card to pin it!' : 'No archived books.'}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {displayBooks.map((book) => (
-                <div
-                  key={book.id}
-                  className="p-5 rounded-xl bg-[#121218] border border-[#232334] hover:border-[#7c3aed]/50 transition-all flex flex-col justify-between group shadow-lg relative"
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-3 mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: book.coverColor }} />
-                        <span className="text-xs font-bold uppercase text-[#8e8ea0]">{book.genre}</span>
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={(e) => handleToggleFav(e, book.id, !!book.isFavorite)}
-                          className="p-1 rounded text-amber-400 hover:bg-[#1e1e2a]"
-                          title={book.isFavorite ? 'Unpin Favorite' : 'Pin Favorite'}
-                        >
-                          <Star className={`w-4 h-4 ${book.isFavorite ? 'fill-amber-400' : ''}`} />
-                        </button>
-
-                        {book.status === 'Archived' ? (
-                          <button
-                            onClick={(e) => handleRestore(e, book.id)}
-                            className="p-1 text-cyan-400 hover:bg-[#1e1e2a]"
-                            title="Restore Book"
-                          >
-                            <RotateCcw className="w-4 h-4" />
-                          </button>
-                        ) : (
-                          <button
-                            onClick={(e) => handleArchive(e, book.id)}
-                            className="p-1 text-[#8e8ea0] hover:text-white hover:bg-[#1e1e2a]"
-                            title="Archive Book"
-                          >
-                            <Archive className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
                     </div>
 
-                    <h3 className="text-base font-extrabold text-white group-hover:text-[#a78bfa] transition-colors">
+                    <h3 className="mt-3 truncate text-base font-semibold text-[#f4f4f5] transition group-hover:text-[#c4b5fd]">
                       {book.title}
                     </h3>
-                    <p className="text-xs text-[#a1a1aa] mt-1 line-clamp-2 leading-relaxed">
+
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#71717a]">
                       {book.description}
                     </p>
-                  </div>
 
-                  <div className="mt-4 pt-3 border-t border-[#232334] flex items-center justify-between text-xs text-[#8e8ea0]">
-                    <div>
-                      <strong>{book.calculatedChapterCount}</strong> Chapters
-                    </div>
+                  </Link>
 
-                    <Link
-                      href={`/books/${book.id}`}
-                      className="flex items-center gap-1 text-xs font-bold text-[#7c3aed] hover:text-[#a78bfa]"
+
+                  <div className="flex items-center gap-1">
+
+                    <button
+                      onClick={(e) =>
+                        handleToggleFav(e, book.id, !!book.isFavorite)
+                      }
+                      className="rounded-md p-1.5 text-[#52525b] transition hover:bg-[#1c1c23] hover:text-amber-400"
+                      title={
+                        book.isFavorite
+                          ? "Unpin Favorite"
+                          : "Pin Favorite"
+                      }
                     >
-                      Open Bible <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                      <Star
+                        className={`h-4 w-4 ${
+                          book.isFavorite
+                            ? "fill-amber-400 text-amber-400"
+                            : ""
+                        }`}
+                      />
+                    </button>
+
+
+                    {book.status === "Archived" ? (
+
+                      <button
+                        onClick={(e) =>
+                          handleRestore(e, book.id)
+                        }
+                        className="rounded-md p-1.5 text-[#52525b] transition hover:bg-[#1c1c23] hover:text-[#d4d4d8]"
+                        title="Restore Book"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </button>
+
+                    ) : (
+
+                      <button
+                        onClick={(e) =>
+                          handleArchive(e, book.id)
+                        }
+                        className="rounded-md p-1.5 text-[#52525b] transition hover:bg-[#1c1c23] hover:text-[#d4d4d8]"
+                        title="Archive Book"
+                      >
+                        <Archive className="h-4 w-4" />
+                      </button>
+
+                    )}
+
                   </div>
+
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+
+
+                <div className="mt-5 flex items-center justify-between border-t border-[#292932] pt-3">
+
+                  <span className="text-xs text-[#52525b]">
+                    <strong className="font-medium text-[#71717a]">
+                      {book.calculatedChapterCount}
+                    </strong>{" "}
+                    chapters
+                  </span>
+
+                  <Link
+                    href={`/books/${book.id}`}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[#71717a] transition hover:text-[#a78bfa]"
+                  >
+                    Open Bible
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+
+                </div>
+
+              </div>
+
+            ))}
+
+          </div>
+
+        )}
+
+      </section>
+
     </div>
   );
 }
