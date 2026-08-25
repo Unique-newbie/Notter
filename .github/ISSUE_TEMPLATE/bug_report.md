@@ -1,44 +1,30 @@
+name: Bug Report
+description: Create a report to help us improve
+title: "[BUG] "
+labels: ["bug"]
+assignees: ""
 ---
 
-name: Bug Report
-description: Report a reproducible problem in Notter
-title: "[Bug] "
-labels: ["bug"]
-assignees: []
--------------
-
 ## Describe the bug
+A clear and concise description of what the bug is.
 
-Clearly describe what went wrong.
-
-## Steps to reproduce
-
-Provide the steps needed to reproduce the issue.
-
-1. Go to `...`
-2. Click `...`
-3. Perform `...`
-4. Observe the issue
+## Steps to Reproduce
+Steps to reproduce the behavior:
+1. Go to '...'
+2. Click on '....'
+3. Scroll down to '....'
+4. See error
 
 ## Expected behavior
+A clear and concise description of what you expected to happen.
 
-Describe what you expected to happen.
+## Screenshots
+If applicable, add screenshots to help explain your problem.
 
-## Actual behavior
-
-Describe what happened instead.
-
-## Screenshots or recordings
-
-If applicable, add screenshots or screen recordings that help demonstrate the issue.
-
-## Environment
-
-* **OS:** [e.g. Windows 11, macOS, Linux]
-* **Browser:** [e.g. Firefox, Chrome, Edge]
-* **Notter version/commit:** [e.g. development / commit hash]
-* **AI provider/model:** [if relevant]
+## Environment:
+ - OS: [e.g. Windows 11, macOS, Linux]
+ - Browser: [e.g. Chrome, Firefox, Safari]
+ - NotterPad Version: [e.g. 1.0.0]
 
 ## Additional context
-
-Add any other information that may help reproduce or diagnose the issue.
+Add any other context about the problem here.
