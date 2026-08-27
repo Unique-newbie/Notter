@@ -357,7 +357,7 @@ export function TimelineVisualizer({ bookId, timelineEvents, chapters, onRefresh
                         </div>
                       </div>
 
-                      <div className="absolute left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-[#121218] border-2 border-[#7c3aed] flex items-center justify-center text-[#a78bfa] z-10 shadow-purple hidden md:flex group-hover:scale-125 transition-transform">
+                      <div className="absolute left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-[#121218] border-2 border-[#7c3aed] items-center justify-center text-[#a78bfa] z-10 shadow-purple hidden md:flex group-hover:scale-125 transition-transform">
                         <Sparkles className="w-4 h-4 text-[#7c3aed]" />
                       </div>
 

@@ -12,123 +12,8 @@
   --text-subtle: #a1a1aa;
   --accent-color: #7c3aed;
   --accent-hover: #6d28d9;
-}
-
-/* 1. Dark Theme (Default) */
-html[data-theme='dark'] {
-  --bg-main: #09090b;
-  --bg-card: #121218;
-  --bg-card-hover: #181820;
-  --border-color: #232334;
-  --text-main: #f4f4f5;
-  --text-muted: #8e8ea0;
-  --text-subtle: #a1a1aa;
-  --accent-color: #7c3aed;
-  --accent-hover: #6d28d9;
-}
-
-/* 2. AMOLED Theme */
-html[data-theme='amoled'] {
-  --bg-main: #000000;
-  --bg-card: #08080a;
-  --bg-card-hover: #101014;
-  --border-color: #1a1a24;
-  --text-main: #ffffff;
-  --text-muted: #71717a;
-  --text-subtle: #a1a1aa;
-  --accent-color: #a78bfa;
-  --accent-hover: #8b5cf6;
-}
-
-/* 3. Light Theme */
-html[data-theme='light'] {
-  --bg-main: #f8fafc;
-  --bg-card: #ffffff;
-  --bg-card-hover: #f1f5f9;
-  --border-color: #e2e8f0;
-  --text-main: #0f172a;
-  --text-muted: #64748b;
-  --text-subtle: #475569;
-  --accent-color: #6366f1;
-  --accent-hover: #4f46e5;
-}
-
-/* 4. Royal Theme */
-html[data-theme='royal'] {
-  --bg-main: #130d23;
-  --bg-card: #1a102f;
-  --bg-card-hover: #231540;
-  --border-color: #3b2463;
-  --text-main: #f5f3ff;
-  --text-muted: #c4b5fd;
-  --text-subtle: #ddd6fe;
-  --accent-color: #8b5cf6;
-  --accent-hover: #7c3aed;
-}
-
-/* 5. Crimson Theme */
-html[data-theme='crimson'] {
-  --bg-main: #170d12;
-  --bg-card: #221117;
-  --bg-card-hover: #2c1820;
-  --border-color: #4b1d29;
-  --text-main: #fff1f2;
-  --text-muted: #fca5a5;
-  --text-subtle: #fecdd3;
-  --accent-color: #ef4444;
-  --accent-hover: #dc2626;
-}
-
-/* 6. Arctic Theme */
-html[data-theme='arctic'] {
-  --bg-main: #09131d;
-  --bg-card: #0f172a;
-  --bg-card-hover: #162338;
-  --border-color: #1e3a5f;
-  --text-main: #e0f2fe;
-  --text-muted: #7dd3fc;
-  --text-subtle: #bae6fd;
-  --accent-color: #38bdf8;
-  --accent-hover: #0ea5e9;
-}
-
-/* 7. Forest Theme */
-html[data-theme='forest'] {
-  --bg-main: #09150f;
-  --bg-card: #0f1f17;
-  --bg-card-hover: #183025;
-  --border-color: #1f5135;
-  --text-main: #ecfdf5;
-  --text-muted: #86efac;
-  --text-subtle: #bbf7d0;
-  --accent-color: #22c55e;
-  --accent-hover: #16a34a;
-}
-
-/* 8. Golden Theme */
-html[data-theme='golden'] {
-  --bg-main: #201405;
-  --bg-card: #2b1d08;
-  --bg-card-hover: #3b2810;
-  --border-color: #6b4a10;
-  --text-main: #fff7ed;
-  --text-muted: #fdba74;
-  --text-subtle: #fed7aa;
-  --accent-color: #f59e0b;
-  --accent-hover: #d97706;
-}
-
-/* 9. Sakura Theme */
-html[data-theme='sakura'] {
-  --bg-main: #170d17;
-  --bg-card: #24131d;
-  --bg-card-hover: #311927;
-  --border-color: #5a2746;
-  --text-main: #fdf2f8;
-  --text-muted: #f9a8d4;
-  --text-subtle: #fbcfe8;
-  --accent-color: #ec4899;
-  --accent-hover: #db2777;
+  scrollbar-color: var(--border-color) var(--bg-main);
+  scrollbar-width: thin;
 }
 
 /* Reduced Motion Mode */
@@ -145,7 +30,6 @@ body {
   color: var(--text-main);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
-  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Obsidian / Cursor style custom scrollbar */
@@ -181,12 +65,13 @@ body {
   border: 1px solid var(--border-color);
 }
 
-.purple-glow {
+.accent-glow {
   box-shadow: 0 0 25px -5px rgba(124, 58, 237, 0.35);
 }
 
 .purple-gradient-text {
   background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 50%, #c084fc 100%);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
